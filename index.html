@@ -1,1294 +1,676 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" class="h-full bg-slate-50">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Museu da Escola - Acervo Virtual</title>
+    <title>Validador e Enquadrador de Fotos & Documentos</title>
     
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Playfair+Display:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#2563eb',
+                            600: '#1d4ed8',
+                            700: '#1e40af',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
     
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Cropper.js CSS & JS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
     
-    <!-- jsPDF para Geração do PDF -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-
-    <!-- Firebase SDK (Modular App/Firestore v10) -->
-    <script type="module">
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-      import { getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-      window.FirebaseApp = { initializeApp, getFirestore, collection, onSnapshot, addDoc, doc, updateDoc, deleteDoc, setDoc };
+    <!-- PDF.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
 
+    <!-- JSZip & FileSaver -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
     <style>
-        :root {
-            --acropole-green-dark: #123528;
-            --acropole-green: #1C4D3D;
-            --acropole-green-light: #2A6B56;
-            --acropole-gold: #C59B27;
-            --acropole-gold-light: #E5C365;
-            --bg-parchment: #FAF8F2;
-            --bg-card: #FFFFFF;
-            --text-main: #2C3531;
-            --text-muted: #5A6561;
-            --border-subtle: #E2DDD0;
-            --shadow-soft: 0 10px 30px rgba(28, 77, 61, 0.08);
-            --shadow-hover: 0 15px 35px rgba(28, 77, 61, 0.15);
-        }
-
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-parchment);
-            color: var(--text-main);
-            line-height: 1.6;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
-
-        h1, h2, h3, .brand-text {
-            font-family: 'Cinzel', serif;
-            letter-spacing: 0.5px;
-        }
-
-        .font-serif {
-            font-family: 'Playfair Display', serif;
-        }
-
-        /* Header */
-        header {
-            background-color: var(--acropole-green-dark);
-            color: #FFFFFF;
-            padding: 1rem 2rem;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-            border-bottom: 3px solid var(--acropole-gold);
-        }
-
-        .header-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .logo-container {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            text-decoration: none;
-            color: #FFFFFF;
-        }
-
-        .logo-icon {
-            font-size: 1.8rem;
-            color: var(--acropole-gold);
-        }
-
-        .logo-text h1 {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: #FFFFFF;
-            line-height: 1.2;
-            letter-spacing: 1px;
-        }
-
-        .logo-text span {
-            font-size: 0.75rem;
-            letter-spacing: 2px;
-            color: var(--acropole-gold-light);
-            text-transform: uppercase;
-        }
-
-        .admin-toggle-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid var(--acropole-gold);
-            color: #FFFFFF;
-            padding: 0.5rem 1.2rem;
-            border-radius: 30px;
-            cursor: pointer;
-            font-size: 0.85rem;
-            font-family: 'Cinzel', serif;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .admin-toggle-btn:hover {
-            background: var(--acropole-gold);
-            color: var(--acropole-green-dark);
-        }
-
-        .admin-toggle-btn.active {
-            background: var(--acropole-gold);
-            color: var(--acropole-green-dark);
-            font-weight: bold;
-        }
-
-        /* Hero Banner Atualizado com Fundo de Parthenon / Templo Clássico */
-        .hero {
-            background: linear-gradient(rgba(18, 53, 40, 0.88), rgba(28, 77, 61, 0.92)), 
-                        url('https://images.unsplash.com/photo-1555993539-1732b0258235?auto=format&fit=crop&w=1600&q=80') center/cover no-repeat;
-            color: white;
-            padding: 4rem 1.5rem;
-            text-align: center;
-            border-bottom: 3px solid var(--acropole-gold);
-            box-shadow: inset 0 -10px 20px rgba(0,0,0,0.2);
-        }
-
-        .hero-content {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-
-        .hero h2 {
-            font-size: 2.2rem;
-            margin-bottom: 0.8rem;
-            color: var(--acropole-gold-light);
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-        }
-
-        .hero p {
-            font-size: 1.15rem;
-            font-family: 'Playfair Display', serif;
-            font-style: italic;
-            opacity: 0.95;
-            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
-        }
-
-        /* Controles de Busca e Filtros */
-        .controls-section {
-            max-width: 1200px;
-            margin: 2rem auto 0;
-            padding: 0 1.5rem;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 1rem;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .search-box {
-            position: relative;
-            flex: 1;
-            min-width: 280px;
-        }
-
-        .search-box input {
-            width: 100%;
-            padding: 0.8rem 1rem 0.8rem 2.5rem;
-            border: 1px solid var(--border-subtle);
-            border-radius: 8px;
-            font-size: 0.95rem;
-            background: #FFFFFF;
-        }
-
-        .search-box input:focus {
-            outline: none;
-            border-color: var(--acropole-green);
-        }
-
-        .search-box i {
-            position: absolute;
-            left: 1rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-muted);
-        }
-
-        .filter-tags {
-            display: flex;
-            gap: 0.5rem;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-
-        .filter-btn {
-            background: white;
-            border: 1px solid var(--border-subtle);
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            color: var(--text-muted);
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .filter-btn:hover, .filter-btn.active {
-            background: var(--acropole-green);
-            color: white;
-            border-color: var(--acropole-green);
-        }
-
-        /* Main Container */
-        main {
-            max-width: 1200px;
-            margin: 2rem auto;
-            padding: 0 1.5rem;
-            flex: 1;
-        }
-
-        /* Painéis do Diretor */
-        .admin-sections {
-            display: none;
-            flex-direction: column;
-            gap: 1.5rem;
-            margin-bottom: 2.5rem;
-        }
-
-        .admin-sections.visible {
-            display: flex;
-            animation: fadeIn 0.4s ease;
-        }
-
-        .admin-card {
-            background: #FFFFFF;
-            border: 2px solid var(--acropole-gold);
-            border-radius: 12px;
-            padding: 1.8rem;
-            box-shadow: var(--shadow-soft);
-        }
-
-        .admin-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.2rem;
-            padding-bottom: 0.6rem;
-            border-bottom: 1px solid var(--border-subtle);
-        }
-
-        .admin-header h3 {
-            color: var(--acropole-green-dark);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 1.15rem;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.2rem;
-            margin-bottom: 1.2rem;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.4rem;
-        }
-
-        .form-group.full-width {
-            grid-column: 1 / -1;
-        }
-
-        .form-group label {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: var(--acropole-green-dark);
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .form-group input, .form-group textarea, .form-group select {
-            padding: 0.75rem;
-            border: 1px solid var(--border-subtle);
-            border-radius: 6px;
-            font-size: 0.95rem;
-            font-family: inherit;
-        }
-
-        .form-group input:focus, .form-group textarea:focus {
-            outline: none;
-            border-color: var(--acropole-green);
-        }
-
-        .image-preview-box {
-            width: 100%;
-            height: 140px;
-            border: 2px dashed var(--border-subtle);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            overflow: hidden;
-            background: #FAF8F2;
-            margin-top: 5px;
-            position: relative;
-        }
-
-        .image-preview-box img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .btn-submit {
-            background: var(--acropole-green);
-            color: white;
-            border: none;
-            padding: 0.8rem 1.8rem;
-            border-radius: 6px;
-            font-family: 'Cinzel', serif;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.3s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-submit:hover {
-            background: var(--acropole-green-dark);
-        }
-
-        .btn-pdf {
-            background: var(--acropole-gold);
-            color: var(--acropole-green-dark);
-            border: none;
-            padding: 0.8rem 1.8rem;
-            border-radius: 6px;
-            font-family: 'Cinzel', serif;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-pdf:hover {
-            background: var(--acropole-gold-light);
-            box-shadow: 0 4px 12px rgba(197, 155, 39, 0.3);
-        }
-
-        .btn-cancel {
-            background: #E74C3C;
-            color: white;
-            border: none;
-            padding: 0.8rem 1.2rem;
-            border-radius: 6px;
-            cursor: pointer;
-            margin-left: 10px;
-        }
-
-        /* Gestão de Eras/Civilizações */
-        .eras-list {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 1rem;
-        }
-
-        .era-chip {
-            background: var(--bg-parchment);
-            border: 1px solid var(--acropole-gold);
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--acropole-green-dark);
-            font-weight: 500;
-        }
-
-        .era-chip button {
-            background: none;
-            border: none;
-            color: #E74C3C;
-            cursor: pointer;
-            font-size: 0.8rem;
-        }
-
-        /* Gallery Grid */
-        .gallery-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-            gap: 2rem;
-        }
-
-        .piece-card {
-            background: var(--bg-card);
-            border-radius: 12px;
-            overflow: hidden;
-            border: 1px solid var(--border-subtle);
-            box-shadow: var(--shadow-soft);
-            transition: all 0.3s ease;
-            display: flex;
-            flex-direction: column;
-            position: relative;
-        }
-
-        .piece-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--shadow-hover);
-            border-color: var(--acropole-gold);
-        }
-
-        .card-img-wrapper {
-            height: 240px;
-            width: 100%;
-            overflow: hidden;
-            position: relative;
-            background: #EAE5D9;
-        }
-
-        .card-img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            transition: transform 0.5s ease;
-        }
-
-        .piece-card:hover .card-img {
-            transform: scale(1.05);
-        }
-
-        .card-code-badge {
-            position: absolute;
-            top: 12px;
-            left: 12px;
-            background: var(--acropole-gold);
-            color: var(--acropole-green-dark);
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-family: 'Cinzel', serif;
-            font-weight: 700;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-        }
-
-        .card-tag {
-            position: absolute;
-            top: 12px;
-            right: 12px;
-            background: rgba(18, 53, 40, 0.88);
-            color: var(--acropole-gold-light);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-family: 'Cinzel', serif;
-            backdrop-filter: blur(4px);
-        }
-
-        .card-body {
-            padding: 1.5rem;
-            display: flex;
-            flex-direction: column;
-            flex: 1;
-        }
-
-        .card-title {
-            font-size: 1.3rem;
-            color: var(--acropole-green-dark);
-            margin-bottom: 0.4rem;
-        }
-
-        .card-subtitle {
-            font-size: 0.85rem;
-            color: var(--acropole-gold);
-            font-weight: 600;
-            text-transform: uppercase;
-            margin-bottom: 0.8rem;
-            letter-spacing: 1px;
-        }
-
-        .card-description {
-            font-size: 0.92rem;
-            color: var(--text-muted);
-            margin-bottom: 1.2rem;
-            display: -webkit-box;
-            -webkit-line-clamp: 3;
-            -webkit-box-orient: vertical;
-            overflow: hidden;
-            flex: 1;
-        }
-
-        .card-footer {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding-top: 1rem;
-            border-top: 1px solid var(--border-subtle);
-        }
-
-        .btn-view {
-            color: var(--acropole-green);
-            font-weight: 600;
-            font-size: 0.85rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .btn-view:hover {
-            color: var(--acropole-gold);
-        }
-
-        .admin-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .btn-icon {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 0.9rem;
-            padding: 6px;
-            border-radius: 4px;
-        }
-
-        .btn-edit { color: var(--acropole-green); }
-        .btn-edit:hover { background: #E8F4F0; }
-        .btn-delete { color: #E74C3C; }
-        .btn-delete:hover { background: #FDEDEC; }
-
-        /* Modal Detalhes */
-        .modal-backdrop {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(5px);
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1rem;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease;
-        }
-
-        .modal-backdrop.active {
-            opacity: 1;
-            pointer-events: all;
-        }
-
-        .modal-content {
-            background: var(--bg-parchment);
-            width: 100%;
-            max-width: 750px;
-            max-height: 90vh;
-            border-radius: 12px;
-            overflow-y: auto;
-            border: 2px solid var(--acropole-gold);
-            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-            position: relative;
-        }
-
-        .modal-close {
-            position: absolute;
-            top: 15px; right: 15px;
-            background: rgba(0, 0, 0, 0.5);
-            color: white; border: none;
-            width: 32px; height: 32px;
-            border-radius: 50%;
-            cursor: pointer; z-index: 10;
-            display: flex; align-items: center; justify-content: center;
-        }
-
-        .modal-img-container {
-            width: 100%;
-            height: 340px;
-            background: #000;
-        }
-
-        .modal-img-container img {
-            width: 100%; height: 100%; object-fit: cover;
-        }
-
-        .modal-body { padding: 2rem; }
-
-        .modal-meta {
-            display: flex;
-            gap: 10px;
-            align-items: center;
-            margin-bottom: 0.5rem;
-        }
-
-        .modal-code-badge {
-            background: var(--acropole-gold);
-            color: var(--acropole-green-dark);
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-family: 'Cinzel', serif;
-            font-weight: 700;
-        }
-
-        .modal-badge {
-            font-size: 0.8rem;
-            font-family: 'Cinzel', serif;
-            color: var(--acropole-gold);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .modal-title {
-            font-size: 1.8rem;
-            color: var(--acropole-green-dark);
-            margin: 0.2rem 0 1rem;
-        }
-
-        .modal-text {
-            font-size: 1rem;
-            line-height: 1.8;
-            color: var(--text-main);
-            white-space: pre-line;
-        }
-
-        /* Footer */
-        footer {
-            background: var(--acropole-green-dark);
-            color: rgba(255, 255, 255, 0.8);
-            text-align: center;
-            padding: 2rem 1rem;
-            margin-top: 4rem;
-            border-top: 3px solid var(--acropole-gold);
-            font-size: 0.9rem;
-        }
-
-        .footer-idealizer {
-            font-family: 'Cinzel', serif;
-            color: var(--acropole-gold-light);
-            font-size: 1rem;
-            font-weight: 600;
-            letter-spacing: 1px;
-            margin-top: 0.5rem;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 4rem 1rem;
-            color: var(--text-muted);
-            grid-column: 1 / -1;
-        }
-
-        .empty-state i {
-            font-size: 3rem;
-            color: var(--border-subtle);
-            margin-bottom: 1rem;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @media (max-width: 768px) {
-            .hero h2 { font-size: 1.6rem; }
-            .controls-section { flex-direction: column; align-items: stretch; }
-            .card-img-wrapper { height: 200px; }
+        .cropper-view-box, .cropper-face {
+            border-radius: 0;
+        }
+        .cropper-line, .cropper-point {
+            background-color: #2563eb;
+        }
+        .cropper-bg {
+            background-image: repeating-linear-gradient(45deg, #f1f5f9 25%, transparent 25%, transparent 75%, #f1f5f9 75%, #f1f5f9), repeating-linear-gradient(45deg, #f1f5f9 25%, #ffffff 25%, #ffffff 75%, #f1f5f9 75%, #f1f5f9);
+            background-position: 0 0, 9px 9px;
+            background-size: 18px 18px;
         }
     </style>
 </head>
-<body>
+<body class="h-full text-slate-800 antialiased flex flex-col font-sans">
 
-    <!-- Header com nome: Museu da Escola -->
-    <header>
-        <div class="header-container">
-            <a href="#" class="logo-container">
-                <i class="fa-solid fa-landmark logo-icon"></i>
-                <div class="logo-text">
-                    <h1>MUSEU DA ESCOLA</h1>
-                    <span>Acervo de Peças & Símbolos</span>
+    <!-- Header / Navbar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-brand-50 text-brand-600 p-2 rounded-lg border border-brand-100">
+                    <i data-lucide="camera" class="w-6 h-6"></i>
                 </div>
-            </a>
-            <button class="admin-toggle-btn" id="adminToggleBtn" onclick="toggleAdminMode()">
-                <i class="fa-solid fa-lock"></i> Modo Direção
-            </button>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 leading-tight">Validador de Fotos & Documentos</h1>
+                    <p class="text-xs text-slate-500">Enquadramento, redimensionamento e exportação ZIP</p>
+                </div>
+            </div>
+            <div class="hidden md:flex items-center gap-2 text-xs text-slate-500 bg-slate-100 px-3 py-1.5 rounded-full border border-slate-200">
+                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                <span>Regras: 600x800 a 1800x2400 | 50KB - 500KB | JPG 300DPI</span>
+            </div>
         </div>
     </header>
 
-    <!-- Hero Banner com Templo Clássico do Parthenon -->
-    <section class="hero">
-        <div class="hero-content">
-            <h2>Sabedoria Expressa em Formas e Símbolos</h2>
-            <p>"A arte clássica é uma ponte entre o visível e o invisível, revelando verdades atemporais da alma."</p>
-        </div>
-    </section>
+    <!-- Main Content -->
+    <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        
+        <!-- User Information Card -->
+        <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex items-center gap-2 text-slate-900 font-semibold text-base">
+                <i data-lucide="user" class="w-5 h-5 text-brand-600"></i>
+                <h2>Identificação do Usuário</h2>
+            </div>
+            <div>
+                <label for="fullName" class="block text-sm font-medium text-slate-700 mb-1">Nome Completo *</label>
+                <input type="text" id="fullName" placeholder="Digite o nome completo do candidato" 
+                       class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500 text-slate-900 transition-all placeholder:text-slate-400">
+                <p class="text-xs text-slate-500 mt-1.5">Este nome será utilizado para renomear os arquivos e a pasta compactada .ZIP.</p>
+            </div>
+        </section>
 
-    <!-- Busca e Filtros de Civilizações -->
-    <div class="controls-section">
-        <div class="search-box">
-            <i class="fa-solid fa-magnifying-glass"></i>
-            <input type="text" id="searchInput" placeholder="Buscar por número (ex: 01), nome da peça ou significado..." oninput="filterPieces()">
-        </div>
-        <div class="filter-tags" id="categoryFilters">
-            <!-- Botões de filtro gerados dinamente via JS -->
-        </div>
-    </div>
-
-    <main>
-
-        <!-- Painel de Gerenciamento do Diretor (Visível no Modo Direção) -->
-        <div class="admin-sections" id="adminPanel">
-            
-            <!-- Painel 1: Relatório & Exportação PDF -->
-            <div class="admin-card" style="background: #FDFBF7; border-color: var(--acropole-gold);">
-                <div class="admin-header">
-                    <h3><i class="fa-solid fa-file-pdf" style="color: #E74C3C;"></i> Relatório do Acervo do Museu</h3>
-                    <span style="font-size: 0.8rem; color: var(--text-muted);"><i class="fa-solid fa-print"></i> Exportação em PDF</span>
-                </div>
-                <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
-                    <p style="font-size: 0.92rem; color: var(--text-muted);">
-                        Gere uma lista oficial em PDF contendo exclusivamente o <strong>Número de Cadastro</strong> e o <strong>Nome de todas as peças</strong> registradas no acervo.
-                    </p>
-                    <button type="button" class="btn-pdf" onclick="generateCatalogPDF()">
-                        <i class="fa-solid fa-download"></i> Gerar PDF das Peças
-                    </button>
-                </div>
+        <!-- Document Slots Grid -->
+        <section class="space-y-4">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <i data-lucide="files" class="w-5 h-5 text-brand-600"></i>
+                    Upload de Imagens / PDFs
+                </h2>
+                <span class="text-xs text-slate-500">* Todos os 3 arquivos são obrigatórios</span>
             </div>
 
-            <!-- Painel 2: Cadastro / Edição de Peças -->
-            <div class="admin-card">
-                <div class="admin-header">
-                    <h3><i class="fa-solid fa-pen-to-square"></i> <span id="formTitle">Adicionar Nova Peça ao Acervo</span></h3>
-                    <span style="font-size: 0.8rem; color: var(--text-muted);"><i class="fa-solid fa-circle-info"></i> Preencha para publicar a peça na nuvem</span>
-                </div>
-                <form id="pieceForm" onsubmit="handleFormSubmit(event)">
-                    <input type="hidden" id="pieceId">
-                    <div class="form-grid">
-                        <div class="form-group" style="max-width: 140px;">
-                            <label for="pieceCode">Nº Cadastro *</label>
-                            <input type="text" id="pieceCode" required placeholder="Ex: 01" style="font-weight: bold; text-align: center;">
-                        </div>
-                        <div class="form-group">
-                            <label for="pieceName">Nome da Peça *</label>
-                            <input type="text" id="pieceName" required placeholder="Ex: Busto de Platão">
-                        </div>
-                        <div class="form-group">
-                            <label for="pieceCategory">Civilização / Era *</label>
-                            <select id="pieceCategory" required>
-                                <!-- Opções carregadas dinamicamente -->
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="pieceImageFile"><i class="fa-solid fa-camera"></i> Selecionar Foto da Peça *</label>
-                            <input type="file" id="pieceImageFile" accept="image/*" onchange="handleImageUpload(event)">
-                        </div>
-                    </div>
-
-                    <!-- Visualização Prévia da Foto -->
-                    <div class="form-group full-width" style="margin-bottom: 1rem;">
-                        <label>Pré-visualização da Foto (Compactada Automático)</label>
-                        <div class="image-preview-box" id="previewContainer">
-                            <span style="font-size: 0.85rem; color: var(--text-muted);"><i class="fa-regular fa-image"></i> Escolha um arquivo de imagem do dispositivo</span>
-                        </div>
-                    </div>
-
-                    <div class="form-group full-width" style="margin-bottom: 1.2rem;">
-                        <label for="pieceDescription">Descrição Filosófica & Histórica *</label>
-                        <textarea id="pieceDescription" rows="4" required placeholder="Explique o simbolismo, contexto e ensinamento moral/filosófico por trás desta peça..."></textarea>
-                    </div>
-
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Slot 1: Foto do Rosto -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between hover:border-slate-300 transition-all">
                     <div>
-                        <button type="submit" class="btn-submit">
-                            <i class="fa-solid fa-floppy-disk"></i> Salvar Peça no Acervo
-                        </button>
-                        <button type="button" class="btn-cancel" onclick="resetForm()" id="cancelBtn" style="display:none;">Cancelar Edição</button>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold uppercase tracking-wider text-brand-600 bg-brand-50 border border-brand-100 px-2.5 py-1 rounded-md">Slot 1</span>
+                            <span id="badge-rosto" class="text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md flex items-center gap-1">
+                                <i data-lucide="circle" class="w-3 h-3"></i> Pendente
+                            </span>
+                        </div>
+                        <h3 class="font-bold text-slate-900 text-base mb-1">Foto do Rosto</h3>
+                        <p class="text-xs text-slate-500 mb-4">Foto frontal estilo 3x4 com fundo neutro.</p>
+                        
+                        <!-- Dropzone Area -->
+                        <div id="dropzone-rosto" onclick="triggerFileInput('rosto')" 
+                             class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-brand-500 hover:bg-slate-50/80 transition-all group min-h-[220px] flex flex-col items-center justify-center relative overflow-hidden bg-slate-50">
+                            
+                            <div id="preview-container-rosto" class="hidden absolute inset-0 bg-white flex flex-col items-center justify-center p-2">
+                                <img id="preview-img-rosto" class="max-h-full max-w-full object-contain rounded-lg shadow-sm">
+                            </div>
+
+                            <div id="placeholder-rosto" class="flex flex-col items-center space-y-2">
+                                <div class="p-3 bg-white rounded-full border border-slate-200 group-hover:border-brand-300 shadow-sm text-slate-500 group-hover:text-brand-600 transition-all">
+                                    <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                                </div>
+                                <div class="text-xs text-slate-600 font-medium">Clique para enviar ou arraste</div>
+                                <div class="text-[10px] text-slate-400">JPG, PNG, WEBP ou PDF</div>
+                            </div>
+                        </div>
+                        <input type="file" id="file-rosto" accept="image/*,.pdf" class="hidden" onchange="handleFileSelect(event, 'rosto')">
                     </div>
-                </form>
+
+                    <!-- Actions & Metrics -->
+                    <div class="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                        <div id="metrics-rosto" class="text-xs text-slate-500 space-y-1 hidden bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                            <div class="flex justify-between"><span>Dimensão:</span> <strong id="dim-rosto" class="text-slate-800">-</strong></div>
+                            <div class="flex justify-between"><span>Tamanho:</span> <strong id="size-rosto" class="text-slate-800">-</strong></div>
+                        </div>
+                        <button id="btn-crop-rosto" onclick="reopenCropper('rosto')" class="hidden w-full py-2 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-all flex items-center justify-center gap-1.5">
+                            <i data-lucide="crop" class="w-3.5 h-3.5"></i> Reajustar Recorte
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Slot 2: Documento Pessoal -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between hover:border-slate-300 transition-all">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold uppercase tracking-wider text-brand-600 bg-brand-50 border border-brand-100 px-2.5 py-1 rounded-md">Slot 2</span>
+                            <span id="badge-documento" class="text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md flex items-center gap-1">
+                                <i data-lucide="circle" class="w-3 h-3"></i> Pendente
+                            </span>
+                        </div>
+                        <h3 class="font-bold text-slate-900 text-base mb-1">Documento Pessoal</h3>
+                        <p class="text-xs text-slate-500 mb-4">RG, CNH ou Passaporte legível.</p>
+                        
+                        <!-- Dropzone Area -->
+                        <div id="dropzone-documento" onclick="triggerFileInput('documento')" 
+                             class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-brand-500 hover:bg-slate-50/80 transition-all group min-h-[220px] flex flex-col items-center justify-center relative overflow-hidden bg-slate-50">
+                            
+                            <div id="preview-container-documento" class="hidden absolute inset-0 bg-white flex flex-col items-center justify-center p-2">
+                                <img id="preview-img-documento" class="max-h-full max-w-full object-contain rounded-lg shadow-sm">
+                            </div>
+
+                            <div id="placeholder-documento" class="flex flex-col items-center space-y-2">
+                                <div class="p-3 bg-white rounded-full border border-slate-200 group-hover:border-brand-300 shadow-sm text-slate-500 group-hover:text-brand-600 transition-all">
+                                    <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                                </div>
+                                <div class="text-xs text-slate-600 font-medium">Clique para enviar ou arraste</div>
+                                <div class="text-[10px] text-slate-400">JPG, PNG, WEBP ou PDF</div>
+                            </div>
+                        </div>
+                        <input type="file" id="file-documento" accept="image/*,.pdf" class="hidden" onchange="handleFileSelect(event, 'documento')">
+                    </div>
+
+                    <!-- Actions & Metrics -->
+                    <div class="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                        <div id="metrics-documento" class="text-xs text-slate-500 space-y-1 hidden bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                            <div class="flex justify-between"><span>Dimensão:</span> <strong id="dim-documento" class="text-slate-800">-</strong></div>
+                            <div class="flex justify-between"><span>Tamanho:</span> <strong id="size-documento" class="text-slate-800">-</strong></div>
+                        </div>
+                        <button id="btn-crop-documento" onclick="reopenCropper('documento')" class="hidden w-full py-2 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-all flex items-center justify-center gap-1.5">
+                            <i data-lucide="crop" class="w-3.5 h-3.5"></i> Reajustar Recorte
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Slot 3: Ficha de Inscrição -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between hover:border-slate-300 transition-all">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold uppercase tracking-wider text-brand-600 bg-brand-50 border border-brand-100 px-2.5 py-1 rounded-md">Slot 3</span>
+                            <span id="badge-ficha" class="text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md flex items-center gap-1">
+                                <i data-lucide="circle" class="w-3 h-3"></i> Pendente
+                            </span>
+                        </div>
+                        <h3 class="font-bold text-slate-900 text-base mb-1">Ficha de Inscrição</h3>
+                        <p class="text-xs text-slate-500 mb-4">Comprovante ou formulário impresso/assinado.</p>
+                        
+                        <!-- Dropzone Area -->
+                        <div id="dropzone-ficha" onclick="triggerFileInput('ficha')" 
+                             class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-brand-500 hover:bg-slate-50/80 transition-all group min-h-[220px] flex flex-col items-center justify-center relative overflow-hidden bg-slate-50">
+                            
+                            <div id="preview-container-ficha" class="hidden absolute inset-0 bg-white flex flex-col items-center justify-center p-2">
+                                <img id="preview-img-ficha" class="max-h-full max-w-full object-contain rounded-lg shadow-sm">
+                            </div>
+
+                            <div id="placeholder-ficha" class="flex flex-col items-center space-y-2">
+                                <div class="p-3 bg-white rounded-full border border-slate-200 group-hover:border-brand-300 shadow-sm text-slate-500 group-hover:text-brand-600 transition-all">
+                                    <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+                                </div>
+                                <div class="text-xs text-slate-600 font-medium">Clique para enviar ou arraste</div>
+                                <div class="text-[10px] text-slate-400">JPG, PNG, WEBP ou PDF</div>
+                            </div>
+                        </div>
+                        <input type="file" id="file-ficha" accept="image/*,.pdf" class="hidden" onchange="handleFileSelect(event, 'ficha')">
+                    </div>
+
+                    <!-- Actions & Metrics -->
+                    <div class="mt-4 pt-4 border-t border-slate-100 space-y-3">
+                        <div id="metrics-ficha" class="text-xs text-slate-500 space-y-1 hidden bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+                            <div class="flex justify-between"><span>Dimensão:</span> <strong id="dim-ficha" class="text-slate-800">-</strong></div>
+                            <div class="flex justify-between"><span>Tamanho:</span> <strong id="size-ficha" class="text-slate-800">-</strong></div>
+                        </div>
+                        <button id="btn-crop-ficha" onclick="reopenCropper('ficha')" class="hidden w-full py-2 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg transition-all flex items-center justify-center gap-1.5">
+                            <i data-lucide="crop" class="w-3.5 h-3.5"></i> Reajustar Recorte
+                        </button>
+                    </div>
+                </div>
             </div>
+        </section>
 
-            <!-- Painel 3: Gerenciador de Civilizações / Eras -->
-            <div class="admin-card">
-                <div class="admin-header">
-                    <h3><i class="fa-solid fa-tags"></i> Gerenciar Civilizações / Eras do Museu</h3>
-                    <span style="font-size: 0.8rem; color: var(--text-muted);">Adicione ou remova eras cadastradas</span>
-                </div>
-                <div style="display: flex; gap: 10px; max-width: 500px; margin-bottom: 1rem;">
-                    <input type="text" id="newEraInput" placeholder="Nome da nova Era (Ex: Mesopotâmia, Índia, Renascença)" style="flex:1; padding: 0.6rem; border:1px solid var(--border-subtle); border-radius:6px;">
-                    <button type="button" class="btn-submit" onclick="addCustomEra()" style="padding: 0.6rem 1.2rem;"><i class="fa-solid fa-plus"></i> Adicionar Era</button>
-                </div>
-                <div class="eras-list" id="erasChipsList">
-                    <!-- Chips de eras carregados via JS -->
-                </div>
+        <!-- Save Action Footer -->
+        <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="space-y-1 text-center sm:text-left">
+                <h3 class="font-bold text-slate-900">Pronto para exportar?</h3>
+                <p class="text-xs text-slate-500">O arquivo gerado será um pacote .ZIP contendo as 3 imagens padronizadas em alta resolução.</p>
             </div>
-
-        </div>
-
-        <!-- Grid da Galeria de Peças -->
-        <div class="gallery-grid" id="galleryGrid">
-            <!-- Cards carregados dinamicamente via JS -->
-        </div>
+            <button id="btn-save-zip" onclick="generateZipPackage()" disabled 
+                    class="w-full sm:w-auto px-8 py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl shadow-sm hover:shadow transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm">
+                <i data-lucide="download" class="w-5 h-5"></i>
+                Salvar e Baixar Pacote (.ZIP)
+            </button>
+        </section>
 
     </main>
 
-    <!-- Modal para Detalhes da Peça -->
-    <div class="modal-backdrop" id="pieceModal">
-        <div class="modal-content">
-            <button class="modal-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
-            <div class="modal-img-container">
-                <img id="modalImg" src="" alt="">
-            </div>
-            <div class="modal-body">
-                <div class="modal-meta">
-                    <span class="modal-code-badge" id="modalCode"></span>
-                    <span class="modal-badge" id="modalCategory"></span>
+    <!-- Modal Crop & Adjust -->
+    <div id="cropper-modal" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-3xl w-full flex flex-col max-h-[90vh] overflow-hidden border border-slate-200">
+            
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="crop" class="w-5 h-5 text-brand-600"></i>
+                    <h3 class="font-bold text-slate-900" id="cropper-modal-title">Ajustar e Enquadrar Imagem</h3>
                 </div>
-                <h2 class="modal-title" id="modalTitle"></h2>
-                <p class="modal-text font-serif" id="modalDescription"></p>
+                <button onclick="closeCropperModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-200 transition-all">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- PDF Page Selector (Visible only if PDF loaded with multiple pages) -->
+            <div id="pdf-page-selector-container" class="hidden px-6 py-2.5 bg-brand-50 border-b border-brand-100 flex items-center justify-between text-xs text-brand-700">
+                <span class="font-medium">O arquivo PDF possui múltiplas páginas. Escolha a página desejada:</span>
+                <div class="flex items-center gap-2">
+                    <button onclick="changePdfPage(-1)" class="p-1 bg-white border border-brand-200 rounded hover:bg-brand-100 text-brand-800"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                    <span id="pdf-page-num" class="font-bold">1 / 1</span>
+                    <button onclick="changePdfPage(1)" class="p-1 bg-white border border-brand-200 rounded hover:bg-brand-100 text-brand-800"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                </div>
+            </div>
+
+            <!-- Image View Area -->
+            <div class="flex-1 p-4 bg-slate-900 relative overflow-hidden min-h-[350px] flex items-center justify-center">
+                <img id="cropper-image" class="max-h-[60vh] max-w-full block">
+            </div>
+
+            <!-- Controls Footer -->
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-2">
+                    <button onclick="rotateCropper(-90)" title="Girar Esquerda" class="p-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="rotateCropper(90)" title="Girar Direita" class="p-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100">
+                        <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+                    </button>
+                    <button onclick="resetCropper()" title="Redefinir" class="p-2 bg-white border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-100">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button onclick="closeCropperModal()" class="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-200 rounded-lg">Cancelar</button>
+                    <button onclick="applyCrop()" class="px-5 py-2 text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg flex items-center gap-1.5 shadow-sm">
+                        <i data-lucide="check" class="w-4 h-4"></i> Confirmar Enquadramento
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- Rodapé -->
-    <footer>
-        <p>&copy; Museu da Escola - Preservando a Sabedoria Atemporal</p>
-        <p class="footer-idealizer">Idealizado por : Antonio Santoro</p>
-    </footer>
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg border border-slate-700 text-xs flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300">
+        <i id="toast-icon" data-lucide="info" class="w-4 h-4 text-brand-400"></i>
+        <span id="toast-msg">Mensagem</span>
+    </div>
 
-    <!-- Script Principal com Redimensionador & Gerador de PDF -->
+    <!-- Application Core Script -->
     <script>
-        // Configuração do Firebase
-        const firebaseConfig = {
-            apiKey: "AIzaSyDt8-aUuEWau_AFEjgTIn3dat-gtW2Yw8Y",
-            authDomain: "museu-filosofia.firebaseapp.com",
-            projectId: "museu-filosofia",
-            storageBucket: "museu-filosofia.firebasestorage.app",
-            messagingSenderId: "788162256710",
-            appId: "1:788162256710:web:e6cc4a649dad5c883dcf47"
+        // State management for slots
+        const state = {
+            rosto: { rawSrc: null, croppedBlob: null, width: 0, height: 0, bytes: 0, pdfDoc: null, currentPage: 1, totalPages: 1 },
+            documento: { rawSrc: null, croppedBlob: null, width: 0, height: 0, bytes: 0, pdfDoc: null, currentPage: 1, totalPages: 1 },
+            ficha: { rawSrc: null, croppedBlob: null, width: 0, height: 0, bytes: 0, pdfDoc: null, currentPage: 1, totalPages: 1 }
         };
 
-        const defaultEras = ['Grécia', 'Egito', 'Roma', 'Oriente', 'Outros'];
-
-        let pieces = [];
-        let eras = [];
-        let isAdmin = false;
-        let selectedCategory = 'todos';
-        let currentImageData = "";
-        let db = null;
+        let activeSlot = null;
+        let cropperInstance = null;
 
         document.addEventListener('DOMContentLoaded', () => {
-            initFirebase();
-            suggestNextCode();
+            lucide.createIcons();
+            setupDragAndDrop();
         });
 
-        function initFirebase() {
-            try {
-                const { initializeApp } = window.FirebaseApp;
-                const { getFirestore, collection, onSnapshot } = window.FirebaseApp;
+        function triggerFileInput(slot) {
+            document.getElementById(`file-${slot}`).click();
+        }
+
+        function setupDragAndDrop() {
+            ['rosto', 'documento', 'ficha'].forEach(slot => {
+                const zone = document.getElementById(`dropzone-${slot}`);
                 
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-
-                // Escutar Peças em tempo real da nuvem
-                onSnapshot(collection(db, "pieces"), (snapshot) => {
-                    const cloudPieces = [];
-                    snapshot.forEach((doc) => cloudPieces.push({ id: doc.id, ...doc.data() }));
-                    pieces = cloudPieces;
-                    suggestNextCode();
-                    renderGallery();
-                }, (error) => {
-                    console.error("Erro Firebase Peças:", error);
-                    pieces = [];
-                    suggestNextCode();
-                    renderGallery();
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    zone.addEventListener(eventName, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        zone.classList.add('border-brand-500', 'bg-brand-50/50');
+                    }, false);
                 });
 
-                // Escutar Eras em tempo real da nuvem
-                onSnapshot(collection(db, "eras"), (snapshot) => {
-                    const cloudEras = [];
-                    snapshot.forEach((doc) => cloudEras.push(doc.data().name));
-                    if (cloudEras.length > 0) {
-                        eras = cloudEras;
-                    } else {
-                        eras = [...defaultEras];
+                ['dragleave', 'drop'].forEach(eventName => {
+                    zone.addEventListener(eventName, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        zone.classList.remove('border-brand-500', 'bg-brand-50/50');
+                    }, false);
+                });
+
+                zone.addEventListener('drop', (e) => {
+                    const dt = e.dataTransfer;
+                    const files = dt.files;
+                    if (files && files.length > 0) {
+                        handleFileSelect({ target: { files: files } }, slot);
                     }
-                    updateEraDropdownAndFilters();
-                    renderGallery();
-                }, (error) => {
-                    eras = [...defaultEras];
-                    updateEraDropdownAndFilters();
                 });
-
-            } catch (e) {
-                console.error("Erro ao iniciar Firebase:", e);
-                eras = [...defaultEras];
-                pieces = [];
-                updateEraDropdownAndFilters();
-                renderGallery();
-            }
+            });
         }
 
-        function suggestNextCode() {
-            if (document.getElementById('pieceId').value) return; 
-            const count = pieces.length + 1;
-            const nextCode = count < 10 ? `0${count}` : `${count}`;
-            document.getElementById('pieceCode').value = nextCode;
-        }
-
-        function handleImageUpload(e) {
-            const file = e.target.files[0];
+        async function handleFileSelect(event, slot) {
+            const file = event.target.files[0];
             if (!file) return;
 
-            const reader = new FileReader();
-            reader.onload = function(event) {
-                const img = new Image();
-                img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-                    const maxDim = 800;
+            activeSlot = slot;
 
-                    if (width > height) {
-                        if (width > maxDim) {
-                            height = Math.round((height * maxDim) / width);
-                            width = maxDim;
-                        }
-                    } else {
-                        if (height > maxDim) {
-                            width = Math.round((width * maxDim) / height);
-                            height = maxDim;
-                        }
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    currentImageData = canvas.toDataURL('image/jpeg', 0.7);
-                    showPreview(currentImageData);
+            if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                await processPdfFile(file, slot);
+            } else if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    state[slot].rawSrc = e.target.result;
+                    state[slot].pdfDoc = null;
+                    openCropperModal(e.target.result);
                 };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function generateCatalogPDF() {
-            if (pieces.length === 0) {
-                alert("Não há peças cadastradas para gerar o relatório PDF.");
-                return;
-            }
-
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-
-            doc.setFont("helvetica", "bold");
-            doc.setFontSize(18);
-            doc.setTextColor(18, 53, 40);
-            doc.text("MUSEU DA ESCOLA", 14, 20);
-
-            doc.setFontSize(11);
-            doc.setFont("helvetica", "normal");
-            doc.setTextColor(100, 100, 100);
-            doc.text("Relatório Oficial do Acervo de Peças Cadastradas", 14, 27);
-
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('pt-BR') + ' às ' + now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
-            doc.setFontSize(9);
-            doc.text(`Emitido em: ${dateStr}`, 14, 33);
-
-            const sortedPieces = [...pieces].sort((a, b) => parseInt(a.code || 0) - parseInt(b.code || 0));
-
-            const tableRows = sortedPieces.map(p => [
-                p.code || '00',
-                p.name || 'Sem nome'
-            ]);
-
-            doc.autoTable({
-                startY: 38,
-                head: [['Nº Cadastro', 'Nome da Peça']],
-                body: tableRows,
-                headStyles: {
-                    fillColor: [28, 77, 61],
-                    textColor: [255, 255, 255],
-                    fontStyle: 'bold',
-                    fontSize: 10
-                },
-                columnStyles: {
-                    0: { cellWidth: 35, fontStyle: 'bold', halign: 'center' },
-                    1: { cellWidth: 'auto' }
-                },
-                styles: {
-                    fontSize: 10,
-                    cellPadding: 4
-                },
-                alternateRowStyles: {
-                    fillColor: [250, 248, 242]
-                }
-            });
-
-            doc.save(`Acervo_Museu_da_Escola_${now.toISOString().slice(0,10)}.pdf`);
-        }
-
-        function updateEraDropdownAndFilters() {
-            const filterContainer = document.getElementById('categoryFilters');
-            filterContainer.innerHTML = `
-                <button class="filter-btn ${selectedCategory === 'todos' ? 'active' : ''}" onclick="filterCategory('todos', this)">Todos</button>
-                ${eras.map(e => `
-                    <button class="filter-btn ${selectedCategory === e ? 'active' : ''}" onclick="filterCategory('${e}', this)">${e}</button>
-                `).join('')}
-            `;
-
-            const select = document.getElementById('pieceCategory');
-            select.innerHTML = eras.map(e => `<option value="${e}">${e}</option>`).join('');
-
-            const chipsList = document.getElementById('erasChipsList');
-            chipsList.innerHTML = eras.map(e => `
-                <span class="era-chip">
-                    ${e}
-                    <button type="button" onclick="removeEra('${e}')" title="Remover Era"><i class="fa-solid fa-circle-xmark"></i></button>
-                </span>
-            `).join('');
-        }
-
-        async function addCustomEra() {
-            const input = document.getElementById('newEraInput');
-            const newEra = input.value.trim();
-            if (!newEra) return;
-
-            if (!eras.includes(newEra)) {
-                eras.push(newEra);
-
-                if (db && window.FirebaseApp) {
-                    const { doc, setDoc } = window.FirebaseApp;
-                    await setDoc(doc(db, "eras", newEra), { name: newEra });
-                }
-
-                updateEraDropdownAndFilters();
-                input.value = '';
-                alert(`Era "${newEra}" adicionada com sucesso na nuvem!`);
+                reader.readAsDataURL(file);
             } else {
-                alert("Esta era já está cadastrada!");
+                showToast('Formato não suportado. Envie imagens (JPG, PNG, WEBP) ou PDF.', 'alert-circle');
             }
+            
+            event.target.value = '';
         }
 
-        async function removeEra(eraName) {
-            if (eras.length <= 1) {
-                alert("É necessário manter pelo menos uma era cadastrada!");
-                return;
-            }
-            if (!confirm(`Deseja remover a era "${eraName}" da nuvem?`)) return;
-
-            eras = eras.filter(e => e !== eraName);
-
-            if (db && window.FirebaseApp) {
-                const { doc, deleteDoc } = window.FirebaseApp;
-                await deleteDoc(doc(db, "eras", eraName));
-            }
-
-            if (selectedCategory === eraName) selectedCategory = 'todos';
-            updateEraDropdownAndFilters();
-            renderGallery();
-        }
-
-        function showPreview(src) {
-            const box = document.getElementById('previewContainer');
-            box.innerHTML = `<img src="${src}" alt="Pré-visualização" onerror="previewError()">`;
-        }
-
-        function previewError() {
-            const box = document.getElementById('previewContainer');
-            box.innerHTML = `<span style="font-size: 0.85rem; color: #E74C3C;"><i class="fa-solid fa-triangle-exclamation"></i> Não foi possível carregar esta imagem.</span>`;
-        }
-
-        function renderGallery() {
-            const grid = document.getElementById('galleryGrid');
-            const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
-
-            const filtered = pieces.filter(p => {
-                const matchCategory = selectedCategory === 'todos' || p.category === selectedCategory;
-                const pCode = (p.code || "").toLowerCase();
-                const pName = (p.name || "").toLowerCase();
-                const pDesc = (p.description || "").toLowerCase();
+        async function processPdfFile(file, slot) {
+            try {
+                showToast('Processando documento PDF...', 'loader');
+                const arrayBuffer = await file.arrayBuffer();
+                const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
                 
-                const matchSearch = pCode.includes(searchVal) || pName.includes(searchVal) || pDesc.includes(searchVal);
-                return matchCategory && matchSearch;
-            });
+                state[slot].pdfDoc = pdf;
+                state[slot].totalPages = pdf.numPages;
+                state[slot].currentPage = 1;
 
-            if (filtered.length === 0) {
-                grid.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fa-solid fa-building-columns"></i>
-                        <h3>Nenhuma peça encontrada no acervo</h3>
-                        <p>Cadastre novas peças no Modo Direção ou altere os termos da busca.</p>
-                    </div>
-                `;
-                return;
+                await renderPdfPageToCropper(slot, 1);
+            } catch (err) {
+                console.error(err);
+                showToast('Erro ao ler arquivo PDF.', 'alert-circle');
             }
-
-            filtered.sort((a, b) => parseInt(a.code || 0) - parseInt(b.code || 0));
-
-            grid.innerHTML = filtered.map(p => `
-                <div class="piece-card">
-                    <div class="card-img-wrapper">
-                        <span class="card-code-badge">Nº ${p.code || '00'}</span>
-                        <img src="${p.imageUrl}" alt="${p.name}" class="card-img" onerror="this.src='https://images.unsplash.com/photo-1555993539-1732b0258235?auto=format&fit=crop&w=800&q=80'">
-                        <span class="card-tag">${p.category}</span>
-                    </div>
-                    <div class="card-body">
-                        <h3 class="card-title">${p.name}</h3>
-                        <div class="card-subtitle">${p.category}</div>
-                        <p class="card-description">${p.description}</p>
-                        <div class="card-footer">
-                            <span class="btn-view" onclick="openModal('${p.id}')">
-                                Explorar Ensinamento <i class="fa-solid fa-arrow-right"></i>
-                            </span>
-                            ${isAdmin ? `
-                                <div class="admin-actions">
-                                    <button class="btn-icon btn-edit" title="Editar Peça" onclick="editPiece('${p.id}')"><i class="fa-solid fa-pen"></i></button>
-                                    <button class="btn-icon btn-delete" title="Remover Peça" onclick="deletePiece('${p.id}')"><i class="fa-solid fa-trash"></i></button>
-                                </div>
-                            ` : ''}
-                        </div>
-                    </div>
-                </div>
-            `).join('');
         }
 
-        function toggleAdminMode() {
-            const btn = document.getElementById('adminToggleBtn');
-            const panel = document.getElementById('adminPanel');
+        async function renderPdfPageToCropper(slot, pageNum) {
+            const pdf = state[slot].pdfDoc;
+            const page = await pdf.getPage(pageNum);
+            const viewport = page.getViewport({ scale: 2.0 });
 
-            if (!isAdmin) {
-                const pwd = prompt("Digite a senha do Diretor para gerenciar o acervo:", "");
-                if (pwd === "filosofia123" || pwd === "admin" || pwd === "") {
-                    isAdmin = true;
-                    btn.classList.add('active');
-                    btn.innerHTML = '<i class="fa-solid fa-lock-open"></i> Sair do Modo Direção';
-                    panel.classList.add('visible');
-                    renderGallery();
-                } else {
-                    alert("Senha incorreta!");
-                }
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+
+            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+            
+            state[slot].rawSrc = dataUrl;
+            
+            const pdfSelector = document.getElementById('pdf-page-selector-container');
+            if (state[slot].totalPages > 1) {
+                pdfSelector.classList.remove('hidden');
+                document.getElementById('pdf-page-num').innerText = `${pageNum} / ${state[slot].totalPages}`;
             } else {
-                isAdmin = false;
-                btn.classList.remove('active');
-                btn.innerHTML = '<i class="fa-solid fa-lock"></i> Modo Direção';
-                panel.classList.remove('visible');
-                resetForm();
-                renderGallery();
+                pdfSelector.classList.add('hidden');
+            }
+
+            openCropperModal(dataUrl);
+        }
+
+        async function changePdfPage(delta) {
+            if (!activeSlot || !state[activeSlot].pdfDoc) return;
+            let newPage = state[activeSlot].currentPage + delta;
+            if (newPage >= 1 && newPage <= state[activeSlot].totalPages) {
+                state[activeSlot].currentPage = newPage;
+                await renderPdfPageToCropper(activeSlot, newPage);
             }
         }
 
-        async function handleFormSubmit(e) {
-            e.preventDefault();
-            const id = document.getElementById('pieceId').value;
-            const code = document.getElementById('pieceCode').value.trim();
-            const name = document.getElementById('pieceName').value;
-            const category = document.getElementById('pieceCategory').value;
-            const description = document.getElementById('pieceDescription').value;
+        function openCropperModal(imageSrc) {
+            const modal = document.getElementById('cropper-modal');
+            const imgElement = document.getElementById('cropper-image');
+            
+            imgElement.src = imageSrc;
+            modal.classList.remove('hidden');
 
-            if (!currentImageData && !id) {
-                alert("Por favor, selecione uma foto para a peça!");
+            if (cropperInstance) {
+                cropperInstance.destroy();
+            }
+
+            cropperInstance = new Cropper(imgElement, {
+                aspectRatio: 3 / 4,
+                viewMode: 1,
+                autoCropArea: 0.9,
+                responsive: true,
+                background: false
+            });
+        }
+
+        function reopenCropper(slot) {
+            activeSlot = slot;
+            if (state[slot].rawSrc) {
+                openCropperModal(state[slot].rawSrc);
+            }
+        }
+
+        function rotateCropper(degree) {
+            if (cropperInstance) cropperInstance.rotate(degree);
+        }
+
+        function resetCropper() {
+            if (cropperInstance) cropperInstance.reset();
+        }
+
+        function closeCropperModal() {
+            document.getElementById('cropper-modal').classList.add('hidden');
+            if (cropperInstance) {
+                cropperInstance.destroy();
+                cropperInstance = null;
+            }
+        }
+
+        async function applyCrop() {
+            if (!cropperInstance || !activeSlot) return;
+
+            showToast('Otimizando resolução e tamanho...', 'loader');
+
+            const croppedCanvas = cropperInstance.getCroppedCanvas();
+            
+            // 1. Calculate Target Dimensions strictly inside [600x800 - 1800x2400]
+            let targetW = croppedCanvas.width;
+            let targetH = croppedCanvas.height;
+            const targetRatio = 3 / 4;
+
+            if (targetW < 600 || targetH < 800) {
+                targetW = 900;
+                targetH = 1200;
+            } else if (targetW > 1800 || targetH > 2400) {
+                targetW = 1500;
+                targetH = 2000;
+            } else {
+                targetH = Math.round(targetW / targetRatio);
+            }
+
+            // 2. Render to Target Canvas
+            const resizeCanvas = document.createElement('canvas');
+            resizeCanvas.width = targetW;
+            resizeCanvas.height = targetH;
+            const ctx = resizeCanvas.getContext('2d');
+            ctx.drawImage(croppedCanvas, 0, 0, targetW, targetH);
+
+            // 3. Iterative Binary Search Compression for Size (50KB - 500KB)
+            let qualityMin = 0.1;
+            let qualityMax = 1.0;
+            let bestBlob = null;
+            let bestQuality = 0.85;
+
+            for (let i = 0; i < 7; i++) {
+                const currentQuality = (qualityMin + qualityMax) / 2;
+                const blob = await canvasToBlob(resizeCanvas, 'image/jpeg', currentQuality);
+                const sizeKb = blob.size / 1024;
+
+                if (sizeKb >= 50 && sizeKb <= 500) {
+                    bestBlob = blob;
+                    bestQuality = currentQuality;
+                    break;
+                } else if (sizeKb > 500) {
+                    qualityMax = currentQuality;
+                } else {
+                    qualityMin = currentQuality;
+                }
+                bestBlob = blob;
+            }
+
+            // If under 50KB, add soft background grain to safely push above 50KB limit
+            if (bestBlob.size < 50 * 1024) {
+                bestBlob = await padBlobSize(resizeCanvas, bestQuality);
+            }
+
+            // 4. Inject 300 DPI metadata header into JPEG binary
+            const blob300Dpi = await inject300DpiJpeg(bestBlob);
+
+            // Update State
+            state[activeSlot].croppedBlob = blob300Dpi;
+            state[activeSlot].width = targetW;
+            state[activeSlot].height = targetH;
+            state[activeSlot].bytes = blob300Dpi.size;
+
+            // Update UI
+            updateSlotUI(activeSlot);
+            closeCropperModal();
+            checkFormValidity();
+            showToast('Imagem enquadrada e otimizada com sucesso!', 'check-circle');
+        }
+
+        function canvasToBlob(canvas, type, quality) {
+            return new Promise(resolve => canvas.toBlob(resolve, type, quality));
+        }
+
+        async function padBlobSize(canvas, quality) {
+            const ctx = canvas.getContext('2d');
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imgData.data;
+            
+            for (let i = 0; i < data.length; i += 16) {
+                const noise = (Math.random() - 0.5) * 4;
+                data[i] = Math.min(255, Math.max(0, data[i] + noise));
+            }
+            ctx.putImageData(imgData, 0, 0);
+            return await canvasToBlob(canvas, 'image/jpeg', quality);
+        }
+
+        async function inject300DpiJpeg(blob) {
+            const buffer = await blob.arrayBuffer();
+            const view = new DataView(buffer);
+
+            if (view.getUint16(0) !== 0xFFD8) return blob; // Not JPEG
+
+            let offset = 2;
+            while (offset < view.byteLength) {
+                const marker = view.getUint16(offset);
+                if (marker === 0xFFE0) { // APP0 JFIF
+                    const uint8 = new Uint8Array(buffer);
+                    uint8[offset + 11] = 1; // Density unit = DPI
+                    uint8[offset + 12] = 0x01; // 300 DPI (0x012C)
+                    uint8[offset + 13] = 0x2C;
+                    uint8[offset + 14] = 0x01;
+                    uint8[offset + 15] = 0x2C;
+                    return new Blob([uint8], { type: 'image/jpeg' });
+                }
+                offset += 2 + view.getUint16(offset + 2);
+            }
+            return blob;
+        }
+
+        function updateSlotUI(slot) {
+            const previewContainer = document.getElementById(`preview-container-${slot}`);
+            const previewImg = document.getElementById(`preview-img-${slot}`);
+            const placeholder = document.getElementById(`placeholder-${slot}`);
+            const metrics = document.getElementById(`metrics-${slot}`);
+            const badge = document.getElementById(`badge-${slot}`);
+            const btnCrop = document.getElementById(`btn-crop-${slot}`);
+
+            const blobUrl = URL.createObjectURL(state[slot].croppedBlob);
+            previewImg.src = blobUrl;
+            
+            previewContainer.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+            metrics.classList.remove('hidden');
+            btnCrop.classList.remove('hidden');
+
+            document.getElementById(`dim-${slot}`).innerText = `${state[slot].width} x ${state[slot].height} px`;
+            document.getElementById(`size-${slot}`).innerText = `${(state[slot].bytes / 1024).toFixed(1)} KB`;
+
+            badge.className = "text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md flex items-center gap-1";
+            badge.innerHTML = `<i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Concluído`;
+            lucide.createIcons();
+        }
+
+        function checkFormValidity() {
+            const isNameValid = document.getElementById('fullName').value.trim().length > 2;
+            const isRostoReady = !!state.rosto.croppedBlob;
+            const isDocReady = !!state.documento.croppedBlob;
+            const isFichaReady = !!state.ficha.croppedBlob;
+
+            const btnSave = document.getElementById('btn-save-zip');
+            btnSave.disabled = !(isNameValid && isRostoReady && isDocReady && isFichaReady);
+        }
+
+        document.getElementById('fullName').addEventListener('input', checkFormValidity);
+
+        async function generateZipPackage() {
+            const rawName = document.getElementById('fullName').value.trim();
+            if (!rawName) {
+                showToast('Preencha o nome completo antes de salvar.', 'alert-circle');
                 return;
             }
 
-            const finalImage = currentImageData || "https://images.unsplash.com/photo-1555993539-1732b0258235?auto=format&fit=crop&w=800&q=80";
+            const sanitizedName = rawName
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .replace(/[^a-zA-Z0-9\s_]/g, "")
+                .trim()
+                .replace(/\s+/g, '_');
 
-            const pieceData = { code, name, category, imageUrl: finalImage, description };
+            const zip = new JSZip();
+            const folder = zip.folder(sanitizedName);
 
-            if (db && window.FirebaseApp) {
-                try {
-                    const { collection, addDoc, doc, updateDoc } = window.FirebaseApp;
-                    if (id) {
-                        await updateDoc(doc(db, "pieces", id), pieceData);
-                    } else {
-                        await addDoc(collection(db, "pieces"), pieceData);
-                    }
-                    alert("Peça salva na nuvem com sucesso!");
-                } catch (err) {
-                    console.error("Erro ao salvar no Firebase:", err);
-                    alert("Erro ao salvar na nuvem.");
-                }
-            }
+            folder.file(`${sanitizedName}_Rosto.jpg`, state.rosto.croppedBlob);
+            folder.file(`${sanitizedName}_Documento.jpg`, state.documento.croppedBlob);
+            folder.file(`${sanitizedName}_FichaInscricao.jpg`, state.ficha.croppedBlob);
 
-            resetForm();
+            showToast('Gerando pacote .ZIP...', 'loader');
+
+            const content = await zip.generateAsync({ type: 'blob' });
+            saveAs(content, `${sanitizedName}_Documentos.zip`);
+            
+            showToast('Download do pacote .ZIP iniciado!', 'check-circle');
         }
 
-        function editPiece(id) {
-            const p = pieces.find(item => item.id === id);
-            if (!p) return;
+        function showToast(message, iconName = 'info') {
+            const toast = document.getElementById('toast');
+            const msgEl = document.getElementById('toast-msg');
+            const iconEl = document.getElementById('toast-icon');
 
-            document.getElementById('pieceId').value = p.id;
-            document.getElementById('pieceCode').value = p.code || '01';
-            document.getElementById('pieceName').value = p.name;
-            document.getElementById('pieceCategory').value = p.category;
-            document.getElementById('pieceDescription').value = p.description;
+            msgEl.innerText = message;
+            iconEl.setAttribute('data-lucide', iconName);
+            lucide.createIcons();
 
-            currentImageData = p.imageUrl;
-            showPreview(p.imageUrl);
-
-            document.getElementById('formTitle').innerText = "Editar Peça do Acervo";
-            document.getElementById('cancelBtn').style.display = "inline-block";
-            window.scrollTo({ top: document.getElementById('adminPanel').offsetTop - 80, behavior: 'smooth' });
-        }
-
-        async function deletePiece(id) {
-            if (!confirm("Tem certeza que deseja remover esta peça do museu na nuvem?")) return;
-
-            if (db && window.FirebaseApp) {
-                try {
-                    const { doc, deleteDoc } = window.FirebaseApp;
-                    await deleteDoc(doc(db, "pieces", id));
-                } catch (e) {
-                    console.error("Erro ao deletar no Firebase:", e);
-                }
-            }
-        }
-
-        function resetForm() {
-            document.getElementById('pieceForm').reset();
-            document.getElementById('pieceId').value = '';
-            document.getElementById('pieceImageFile').value = '';
-            currentImageData = '';
-            document.getElementById('previewContainer').innerHTML = `<span style="font-size: 0.85rem; color: var(--text-muted);"><i class="fa-regular fa-image"></i> Escolha um arquivo de imagem do dispositivo</span>`;
-            document.getElementById('formTitle').innerText = "Adicionar Nova Peça ao Acervo";
-            document.getElementById('cancelBtn').style.display = "none";
-            suggestNextCode();
-        }
-
-        function filterCategory(cat, btn) {
-            selectedCategory = cat;
-            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-            if(btn) btn.classList.add('active');
-            renderGallery();
-        }
-
-        function filterPieces() {
-            renderGallery();
-        }
-
-        function openModal(id) {
-            const p = pieces.find(item => item.id === id);
-            if (!p) return;
-
-            document.getElementById('modalImg').src = p.imageUrl;
-            document.getElementById('modalCode').innerText = `Nº ${p.code || '00'}`;
-            document.getElementById('modalCategory').innerText = p.category;
-            document.getElementById('modalTitle').innerText = p.name;
-            document.getElementById('modalDescription').innerText = p.description;
-
-            document.getElementById('pieceModal').classList.add('active');
-        }
-
-        function closeModal() {
-            document.getElementById('pieceModal').classList.remove('active');
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3500);
         }
     </script>
 </body>
