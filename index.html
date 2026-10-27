@@ -46,4 +46,479 @@
         .cropper-view-box, .cropper-face { border-radius: 0; }
         .cropper-line, .cropper-point { background-color: #2563eb; }
         .cropper-bg {
-            background-image: repeating-linear-gradient(45deg, #f1f5f9 25%, transparent 25%, transparent 75%, #f1f5f9 75%, #f1f5f9), repeating-linear-gradient(45deg, #f1f5f9 25%, #ffffff 25%, #ffffff 75%, #f1
+            background-image: repeating-linear-gradient(45deg, #f1f5f9 25%, transparent 25%, transparent 75%, #f1f5f9 75%, #f1f5f9), repeating-linear-gradient(45deg, #f1f5f9 25%, #ffffff 25%, #ffffff 75%, #f1f5f9 75%, #f1f5f9);
+            background-position: 0 0, 9px 9px;
+            background-size: 18px 18px;
+        }
+    </style>
+</head>
+<body class="h-full text-slate-800 antialiased flex flex-col font-sans">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="bg-brand-50 text-brand-600 p-2 rounded-lg border border-brand-100">
+                    <i data-lucide="camera" class="w-6 h-6"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-900 leading-tight">Validador de Fotos & Documentos</h1>
+                    <p class="text-xs text-slate-500">Enquadramento, redimensionamento e exportação ZIP</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+        
+        <!-- User Info -->
+        <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div class="flex items-center gap-2 text-slate-900 font-semibold text-base">
+                <i data-lucide="user" class="w-5 h-5 text-brand-600"></i>
+                <h2>Identificação do Usuário</h2>
+            </div>
+            <div>
+                <label for="fullName" class="block text-sm font-medium text-slate-700 mb-1">Nome Completo *</label>
+                <input type="text" id="fullName" placeholder="Digite o nome completo do candidato" 
+                       class="w-full px-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500 text-slate-900 transition-all placeholder:text-slate-400">
+            </div>
+        </section>
+
+        <!-- Slots Grid -->
+        <section class="space-y-4">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-bold text-slate-900 flex items-center gap-2">
+                    <i data-lucide="files" class="w-5 h-5 text-brand-600"></i>
+                    Documentos e Fotos
+                </h2>
+                <span class="text-xs text-slate-500">* Preencha os 3 itens</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                <!-- Slot 1: Rosto -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold uppercase tracking-wider text-brand-600 bg-brand-50 px-2.5 py-1 rounded-md">Slot 1</span>
+                            <span id="badge-rosto" class="text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md">Pendente</span>
+                        </div>
+                        <h3 class="font-bold text-slate-900 text-base mb-1">Foto do Rosto</h3>
+                        <p class="text-xs text-slate-500 mb-4">Proporção 3:4 (Fundo neutro).</p>
+                        
+                        <div id="dropzone-rosto" onclick="triggerFileInput('rosto')" 
+                             class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-brand-500 hover:bg-slate-50 transition-all min-h-[220px] flex flex-col items-center justify-center relative overflow-hidden bg-slate-50">
+                            <div id="preview-container-rosto" class="hidden absolute inset-0 bg-white flex flex-col items-center justify-center p-2">
+                                <img id="preview-img-rosto" class="max-h-full max-w-full object-contain rounded-lg">
+                            </div>
+                            <div id="placeholder-rosto" class="flex flex-col items-center space-y-2">
+                                <div class="p-3 bg-white rounded-full border border-slate-200 text-slate-500"><i data-lucide="upload-cloud" class="w-6 h-6"></i></div>
+                                <div class="text-xs text-slate-600 font-medium">Clique ou arraste a foto</div>
+                            </div>
+                        </div>
+                        <input type="file" id="file-rosto" accept="image/*,.pdf" class="hidden" onchange="handleFileSelect(event, 'rosto')">
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-slate-100">
+                        <button id="btn-crop-rosto" onclick="reopenCropper('rosto')" class="hidden w-full py-2 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center gap-1.5">
+                            <i data-lucide="crop" class="w-3.5 h-3.5"></i> Reajustar Recorte
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Slot 2: Documento Pessoal -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold uppercase tracking-wider text-brand-600 bg-brand-50 px-2.5 py-1 rounded-md">Slot 2</span>
+                            <span id="badge-documento" class="text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md">Pendente</span>
+                        </div>
+                        <h3 class="font-bold text-slate-900 text-base mb-1">Documento Pessoal</h3>
+                        <p class="text-xs text-slate-500 mb-4">Proporção 3:4 (RG/CNH).</p>
+                        
+                        <div id="dropzone-documento" onclick="triggerFileInput('documento')" 
+                             class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-brand-500 hover:bg-slate-50 transition-all min-h-[220px] flex flex-col items-center justify-center relative overflow-hidden bg-slate-50">
+                            <div id="preview-container-documento" class="hidden absolute inset-0 bg-white flex flex-col items-center justify-center p-2">
+                                <img id="preview-img-documento" class="max-h-full max-w-full object-contain rounded-lg">
+                            </div>
+                            <div id="placeholder-documento" class="flex flex-col items-center space-y-2">
+                                <div class="p-3 bg-white rounded-full border border-slate-200 text-slate-500"><i data-lucide="upload-cloud" class="w-6 h-6"></i></div>
+                                <div class="text-xs text-slate-600 font-medium">Clique ou arraste o documento</div>
+                            </div>
+                        </div>
+                        <input type="file" id="file-documento" accept="image/*,.pdf" class="hidden" onchange="handleFileSelect(event, 'documento')">
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-slate-100">
+                        <button id="btn-crop-documento" onclick="reopenCropper('documento')" class="hidden w-full py-2 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center gap-1.5">
+                            <i data-lucide="crop" class="w-3.5 h-3.5"></i> Reajustar Recorte
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Slot 3: Ficha de Inscrição -->
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold uppercase tracking-wider text-brand-600 bg-brand-50 px-2.5 py-1 rounded-md">Slot 3</span>
+                            <span id="badge-ficha" class="text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md">Pendente</span>
+                        </div>
+                        <h3 class="font-bold text-slate-900 text-base mb-1">Ficha de Inscrição</h3>
+                        <p class="text-xs text-slate-500 mb-4">Formato original compacto.</p>
+                        
+                        <div id="dropzone-ficha" onclick="triggerFileInput('ficha')" 
+                             class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-brand-500 hover:bg-slate-50 transition-all min-h-[220px] flex flex-col items-center justify-center relative overflow-hidden bg-slate-50">
+                            <div id="preview-container-ficha" class="hidden absolute inset-0 bg-white flex flex-col items-center justify-center p-2">
+                                <img id="preview-img-ficha" class="max-h-full max-w-full object-contain rounded-lg">
+                            </div>
+                            <div id="placeholder-ficha" class="flex flex-col items-center space-y-2">
+                                <div class="p-3 bg-white rounded-full border border-slate-200 text-slate-500"><i data-lucide="upload-cloud" class="w-6 h-6"></i></div>
+                                <div class="text-xs text-slate-600 font-medium">Clique ou arraste a ficha</div>
+                            </div>
+                        </div>
+                        <input type="file" id="file-ficha" accept="image/*,.pdf" class="hidden" onchange="handleFileSelect(event, 'ficha')">
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-slate-100">
+                        <button id="btn-crop-ficha" onclick="reopenCropper('ficha')" class="hidden w-full py-2 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center gap-1.5">
+                            <i data-lucide="crop" class="w-3.5 h-3.5"></i> Reajustar Visualização
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Save & WhatsApp Footer -->
+        <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="space-y-1 text-center sm:text-left">
+                    <h3 class="font-bold text-slate-900">Salvar Pacote</h3>
+                    <p class="text-xs text-slate-500">Gera um arquivo .ZIP nomeado automaticamente.</p>
+                </div>
+                <button id="btn-save-zip" onclick="generateZipPackage()" disabled 
+                    class="w-full sm:w-auto px-8 py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm">
+                    <i data-lucide="download" class="w-5 h-5"></i>
+                    Salvar e Baixar Pacote (.ZIP)
+                </button>
+            </div>
+
+            <!-- WhatsApp Section -->
+            <div id="whatsapp-section" class="hidden pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
+                <div class="flex items-center gap-3">
+                    <div class="bg-emerald-500 text-white p-2.5 rounded-xl">
+                        <i data-lucide="message-circle" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-slate-900 text-sm">Enviar Documentos via WhatsApp</h4>
+                        <p class="text-xs text-slate-500">Compartilhe o arquivo .ZIP ou envie uma mensagem direta.</p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                    <button onclick="shareViaWhatsAppFile()" class="flex-1 sm:flex-none px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm">
+                        <i data-lucide="share-2" class="w-4 h-4"></i> Compartilhar Arquivo
+                    </button>
+                    <button onclick="openWhatsAppChat()" class="flex-1 sm:flex-none px-4 py-2.5 bg-white hover:bg-slate-50 text-emerald-700 border border-emerald-300 font-semibold rounded-xl text-xs flex items-center justify-center gap-2 shadow-sm">
+                        <i data-lucide="send" class="w-4 h-4"></i> Enviar Mensagem
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Modal Cropper -->
+    <div id="cropper-modal" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-xl max-w-3xl w-full flex flex-col max-h-[90vh] overflow-hidden border border-slate-200">
+            <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                <h3 class="font-bold text-slate-900 text-sm">Ajustar e Enquadrar Imagem</h3>
+                <button onclick="closeCropperModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </div>
+            
+            <div id="pdf-page-selector-container" class="hidden px-6 py-2 bg-brand-50 border-b border-brand-100 flex items-center justify-between text-xs text-brand-700">
+                <span>Páginas do PDF:</span>
+                <div class="flex items-center gap-2">
+                    <button onclick="changePdfPage(-1)" class="p-1 bg-white border rounded"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                    <span id="pdf-page-num" class="font-bold">1 / 1</span>
+                    <button onclick="changePdfPage(1)" class="p-1 bg-white border rounded"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                </div>
+            </div>
+
+            <div class="flex-1 p-4 bg-slate-900 relative min-h-[350px] flex items-center justify-center">
+                <img id="cropper-image" class="max-h-[60vh] max-w-full block">
+            </div>
+
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <button onclick="rotateCropper(-90)" class="p-2 bg-white border rounded-lg"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>
+                    <button onclick="rotateCropper(90)" class="p-2 bg-white border rounded-lg"><i data-lucide="rotate-cw" class="w-4 h-4"></i></button>
+                    <button onclick="resetCropper()" class="p-2 bg-white border rounded-lg"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="closeCropperModal()" class="px-4 py-2 text-xs font-semibold text-slate-600">Cancelar</button>
+                    <button onclick="applyCrop()" class="px-5 py-2 text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg flex items-center gap-1.5">
+                        <i data-lucide="check" class="w-4 h-4"></i> Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg text-xs flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300">
+        <i id="toast-icon" data-lucide="info" class="w-4 h-4 text-brand-400"></i>
+        <span id="toast-msg">Mensagem</span>
+    </div>
+
+    <!-- Script Principal -->
+    <script>
+        const state = {
+            rosto: { rawSrc: null, croppedBlob: null, pdfDoc: null, currentPage: 1, totalPages: 1 },
+            documento: { rawSrc: null, croppedBlob: null, pdfDoc: null, currentPage: 1, totalPages: 1 },
+            ficha: { rawSrc: null, croppedBlob: null, pdfDoc: null, currentPage: 1, totalPages: 1 }
+        };
+
+        let activeSlot = null;
+        let cropperInstance = null;
+        let lastGeneratedZipBlob = null;
+        let lastSanitizedName = '';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+        });
+
+        function triggerFileInput(slot) {
+            document.getElementById(`file-${slot}`).click();
+        }
+
+        async function handleFileSelect(event, slot) {
+            const file = event.target.files[0];
+            if (!file) return;
+            activeSlot = slot;
+
+            if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                try {
+                    showToast('Lendo PDF...', 'loader');
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+                    state[slot].pdfDoc = pdf;
+                    state[slot].totalPages = pdf.numPages;
+                    state[slot].currentPage = 1;
+                    await renderPdfPageToCropper(slot, 1);
+                } catch (err) {
+                    showToast('Erro ao abrir PDF.', 'alert-circle');
+                }
+            } else if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    state[slot].rawSrc = e.target.result;
+                    state[slot].pdfDoc = null;
+                    openCropperModal(e.target.result);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                showToast('Formato não suportado.', 'alert-circle');
+            }
+            event.target.value = '';
+        }
+
+        async function renderPdfPageToCropper(slot, pageNum) {
+            const pdf = state[slot].pdfDoc;
+            const page = await pdf.getPage(pageNum);
+            const viewport = page.getViewport({ scale: 2.0 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+            
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+            state[slot].rawSrc = dataUrl;
+
+            const selector = document.getElementById('pdf-page-selector-container');
+            if (state[slot].totalPages > 1) {
+                selector.classList.remove('hidden');
+                document.getElementById('pdf-page-num').innerText = `${pageNum} / ${state[slot].totalPages}`;
+            } else {
+                selector.classList.add('hidden');
+            }
+            openCropperModal(dataUrl);
+        }
+
+        async function changePdfPage(delta) {
+            if (!activeSlot || !state[activeSlot].pdfDoc) return;
+            let newPage = state[activeSlot].currentPage + delta;
+            if (newPage >= 1 && newPage <= state[activeSlot].totalPages) {
+                state[activeSlot].currentPage = newPage;
+                await renderPdfPageToCropper(activeSlot, newPage);
+            }
+        }
+
+        function openCropperModal(imageSrc) {
+            const modal = document.getElementById('cropper-modal');
+            const img = document.getElementById('cropper-image');
+            img.src = imageSrc;
+            modal.classList.remove('hidden');
+
+            if (cropperInstance) cropperInstance.destroy();
+
+            const isFicha = (activeSlot === 'ficha');
+            cropperInstance = new Cropper(img, {
+                aspectRatio: isFicha ? NaN : (3 / 4),
+                viewMode: 1,
+                autoCropArea: 0.9,
+                responsive: true,
+                background: false
+            });
+        }
+
+        function reopenCropper(slot) {
+            activeSlot = slot;
+            if (state[slot].rawSrc) openCropperModal(state[slot].rawSrc);
+        }
+
+        function rotateCropper(deg) { if (cropperInstance) cropperInstance.rotate(deg); }
+        function resetCropper() { if (cropperInstance) cropperInstance.reset(); }
+        function closeCropperModal() {
+            document.getElementById('cropper-modal').classList.add('hidden');
+            if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
+        }
+
+        async function applyCrop() {
+            if (!cropperInstance || !activeSlot) return;
+            showToast('Otimizando imagem...', 'loader');
+
+            const canvas = cropperInstance.getCroppedCanvas();
+            const isFicha = (activeSlot === 'ficha');
+            let w = canvas.width, h = canvas.height;
+
+            if (isFicha) {
+                if (w > 2000 || h > 2000) {
+                    const r = Math.min(2000 / w, 2000 / h);
+                    w = Math.round(w * r); h = Math.round(h * r);
+                }
+            } else {
+                if (w < 600 || h < 800) { w = 900; h = 1200; }
+                else if (w > 1800 || h > 2400) { w = 1500; h = 2000; }
+                else { h = Math.round(w / (3/4)); }
+            }
+
+            const targetCanvas = document.createElement('canvas');
+            targetCanvas.width = w; targetCanvas.height = h;
+            targetCanvas.getContext('2d').drawImage(canvas, 0, 0, w, h);
+
+            let bestBlob = null;
+            if (isFicha) {
+                bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', 0.85));
+            } else {
+                let minQ = 0.1, maxQ = 1.0;
+                for (let i = 0; i < 6; i++) {
+                    let q = (minQ + maxQ) / 2;
+                    let blob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', q));
+                    let kb = blob.size / 1024;
+                    if (kb >= 50 && kb <= 500) { bestBlob = blob; break; }
+                    else if (kb > 500) maxQ = q;
+                    else minQ = q;
+                    bestBlob = blob;
+                }
+                if (bestBlob.size < 50 * 1024) {
+                    bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', 0.85));
+                }
+            }
+
+            // Inject 300 DPI
+            const buffer = await bestBlob.arrayBuffer();
+            const view = new DataView(buffer);
+            if (view.getUint16(0) === 0xFFD8) {
+                let offset = 2;
+                while (offset < view.byteLength) {
+                    if (view.getUint16(offset) === 0xFFE0) {
+                        const uint8 = new Uint8Array(buffer);
+                        uint8[offset + 11] = 1;
+                        uint8[offset + 12] = 0x01; uint8[offset + 13] = 0x2C;
+                        uint8[offset + 14] = 0x01; uint8[offset + 15] = 0x2C;
+                        bestBlob = new Blob([uint8], { type: 'image/jpeg' });
+                        break;
+                    }
+                    offset += 2 + view.getUint16(offset + 2);
+                }
+            }
+
+            state[activeSlot].croppedBlob = bestBlob;
+            updateSlotUI(activeSlot);
+            closeCropperModal();
+            checkValidity();
+            showToast('Pronto!', 'check-circle');
+        }
+
+        function updateSlotUI(slot) {
+            const preview = document.getElementById(`preview-container-${slot}`);
+            const img = document.getElementById(`preview-img-${slot}`);
+            const placeholder = document.getElementById(`placeholder-${slot}`);
+            const badge = document.getElementById(`badge-${slot}`);
+            const btnCrop = document.getElementById(`btn-crop-${slot}`);
+
+            img.src = URL.createObjectURL(state[slot].croppedBlob);
+            preview.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+            btnCrop.classList.remove('hidden');
+            badge.className = "text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md";
+            badge.innerText = "Concluído";
+            lucide.createIcons();
+        }
+
+        function checkValidity() {
+            const name = document.getElementById('fullName').value.trim();
+            const ready = name.length > 2 && state.rosto.croppedBlob && state.documento.croppedBlob && state.ficha.croppedBlob;
+            document.getElementById('btn-save-zip').disabled = !ready;
+        }
+
+        document.getElementById('fullName').addEventListener('input', checkValidity);
+
+        async function generateZipPackage() {
+            const rawName = document.getElementById('fullName').value.trim();
+            const sanitized = rawName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9\s_]/g, "").trim().replace(/\s+/g, '_');
+
+            const zip = new JSZip();
+            const folder = zip.folder(sanitized);
+            folder.file(`${sanitized}_Rosto.jpg`, state.rosto.croppedBlob);
+            folder.file(`${sanitized}_Documento.jpg`, state.documento.croppedBlob);
+            folder.file(`${sanitized}_FichaInscricao.jpg`, state.ficha.croppedBlob);
+
+            showToast('Gerando ZIP...', 'loader');
+            const content = await zip.generateAsync({ type: 'blob' });
+            lastGeneratedZipBlob = content;
+            lastSanitizedName = sanitized;
+
+            saveAs(content, `${sanitized}_Documentos.zip`);
+            document.getElementById('whatsapp-section').classList.remove('hidden');
+            showToast('Download concluído!', 'check-circle');
+        }
+
+        async function shareViaWhatsAppFile() {
+            if (!lastGeneratedZipBlob) return;
+            const file = new File([lastGeneratedZipBlob], `${lastSanitizedName}_Documentos.zip`, { type: 'application/zip' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                try {
+                    await navigator.share({ files: [file], title: 'Documentos', text: `Documentos de ${lastSanitizedName.replace(/_/g, ' ')}` });
+                } catch (e) {}
+            } else {
+                const text = encodeURIComponent(`Olá! Segue o arquivo ZIP de ${lastSanitizedName.replace(/_/g, ' ')}.`);
+                window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+            }
+        }
+
+        function openWhatsAppChat() {
+            const name = lastSanitizedName ? lastSanitizedName.replace(/_/g, ' ') : '';
+            const text = encodeURIComponent(`Olá! Aqui estão os documentos de ${name}.`);
+            window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+        }
+
+        function showToast(msg, icon = 'info') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            document.getElementById('toast-icon').setAttribute('data-lucide', icon);
+            lucide.createIcons();
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+        }
+    </script>
+</body>
+</html>
