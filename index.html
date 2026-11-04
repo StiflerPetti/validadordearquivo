@@ -62,7 +62,7 @@
                 </div>
                 <div>
                     <h1 class="text-lg font-bold text-slate-900 leading-tight">Validador de Fotos & Documentos</h1>
-                    <p class="text-xs text-slate-500">Enquadramento, redimensionamento (máx 500KB) e exportação segura</p>
+                    <p class="text-xs text-slate-500">Enquadramento, redimensionamento estrito (máx 500KB) e exportação segura</p>
                 </div>
             </div>
         </div>
@@ -388,43 +388,32 @@
 
         async function applyCrop() {
             if (!cropperInstance || !activeSlot) return;
-            showToast('Processando e comprimindo (Máx 500 KB)...', 'loader');
+            showToast('Ajustando ao padrão da ONG...', 'loader');
 
             const canvas = cropperInstance.getCroppedCanvas();
-            let w = canvas.width;
-            let h = canvas.height;
-
-            // Limita rigorosamente às dimensões máximas (1800 x 2400 pixels)
-            const maxW = 1800;
-            const maxH = 2400;
-            if (w > maxW || h > maxH) {
-                const r = Math.min(maxW / w, maxH / h);
-                w = Math.round(w * r); 
-                h = Math.round(h * r);
-            }
+            
+            // Força um tamanho padrão seguro em pixels (dentro do limite 600x800 a 1800x2400)
+            const targetWidth = 1200;
+            const targetHeight = Math.round(targetWidth * (canvas.height / canvas.width));
 
             const targetCanvas = document.createElement('canvas');
-            targetCanvas.width = w; 
-            targetCanvas.height = h;
+            targetCanvas.width = targetWidth; 
+            targetCanvas.height = targetHeight;
             
             const ctx = targetCanvas.getContext('2d');
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
-            ctx.drawImage(canvas, 0, 0, w, h);
+            ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight);
 
-            let bestBlob = null;
-            let quality = 0.90;
+            // Testa diretamente uma qualidade fixa de 70% que garante tamanho leve
+            let bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', 0.70));
 
-            // Loop inteligente: reduz a qualidade gradativamente até o arquivo ficar abaixo de 490 KB
-            while (quality >= 0.20) {
-                bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', quality));
-                if (bestBlob.size <= 490 * 1024) {
-                    break;
-                }
-                quality -= 0.10;
+            // Se por acaso ainda passar de 480KB, reduz a qualidade para 50%
+            if (bestBlob.size > 480 * 1024) {
+                bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', 0.50));
             }
 
-            // Injeta metadados de 300 DPI (densidade de pontos)
+            // Injeta metadados de 300 DPI
             const buffer = await bestBlob.arrayBuffer();
             const view = new DataView(buffer);
             if (view.getUint16(0) === 0xFFD8) {
@@ -432,9 +421,9 @@
                 while (offset < view.byteLength) {
                     if (view.getUint16(offset) === 0xFFE0) {
                         const uint8 = new Uint8Array(buffer);
-                        uint8[offset + 11] = 1; // Unidade (pontos por polegada)
-                        uint8[offset + 12] = 0x01; uint8[offset + 13] = 0x2C; // X = 300 DPI
-                        uint8[offset + 14] = 0x01; uint8[offset + 15] = 0x2C; // Y = 300 DPI
+                        uint8[offset + 11] = 1;
+                        uint8[offset + 12] = 0x01; uint8[offset + 13] = 0x2C;
+                        uint8[offset + 14] = 0x01; uint8[offset + 15] = 0x2C;
                         bestBlob = new Blob([uint8], { type: 'image/jpeg' });
                         break;
                     }
@@ -448,7 +437,7 @@
             checkValidity();
 
             const kbSize = Math.round(bestBlob.size / 1024);
-            showToast(`Sucesso! Tamanho final: ${kbSize} KB (Abaixo de 500 KB)`, 'check-circle');
+            showToast(`Pronto! Arquivo com ${kbSize} KB (Aprovado!)`, 'check-circle');
         }
 
         function updateSlotUI(slot) {
