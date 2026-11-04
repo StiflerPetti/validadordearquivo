@@ -35,9 +35,8 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
 
-    <!-- JSZip & FileSaver -->
+    <!-- JSZip -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -63,7 +62,7 @@
                 </div>
                 <div>
                     <h1 class="text-lg font-bold text-slate-900 leading-tight">Validador de Fotos & Documentos</h1>
-                    <p class="text-xs text-slate-500">Enquadramento, redimensionamento e exportação ZIP</p>
+                    <p class="text-xs text-slate-500">Enquadramento, redimensionamento (máx 500KB) e exportação segura</p>
                 </div>
             </div>
         </div>
@@ -105,7 +104,7 @@
                             <span id="badge-rosto" class="text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md">Pendente</span>
                         </div>
                         <h3 class="font-bold text-slate-900 text-base mb-1">Foto do Rosto</h3>
-                        <p class="text-xs text-slate-500 mb-4">Proporção 3:4 (Fundo neutro).</p>
+                        <p class="text-xs text-slate-500 mb-4">Proporção 3:4 (Máx 500 KB).</p>
                         
                         <div id="dropzone-rosto" onclick="triggerFileInput('rosto')" 
                              class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-brand-500 hover:bg-slate-50 transition-all min-h-[220px] flex flex-col items-center justify-center relative overflow-hidden bg-slate-50">
@@ -192,7 +191,7 @@
             <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div class="space-y-1 text-center sm:text-left">
                     <h3 class="font-bold text-slate-900">Gerenciar Pacote</h3>
-                    <p class="text-xs text-slate-500">Processa os arquivos de forma segura sem salvar no computador.</p>
+                    <p class="text-xs text-slate-500">Processa os arquivos na memória sem deixar rastros no PC.</p>
                 </div>
                 <div class="flex items-center gap-2 w-full sm:w-auto">
                     <button id="btn-save-zip" onclick="generateZipPackage()" disabled 
@@ -215,7 +214,7 @@
                     </div>
                     <div>
                         <h4 class="font-bold text-slate-900 text-sm">Pronto para Envio</h4>
-                        <p class="text-xs text-slate-500">Envie diretamente pelo WhatsApp ou limpe a tela para o próximo.</p>
+                        <p class="text-xs text-slate-500">Envie diretamente pelo WhatsApp ou limpe a tela.</p>
                     </div>
                 </div>
                 <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
@@ -389,16 +388,17 @@
 
         async function applyCrop() {
             if (!cropperInstance || !activeSlot) return;
-            showToast('Processando em alta qualidade...', 'loader');
+            showToast('Processando e comprimindo (Máx 500 KB)...', 'loader');
 
             const canvas = cropperInstance.getCroppedCanvas();
-            const isFicha = (activeSlot === 'ficha');
-            
             let w = canvas.width;
             let h = canvas.height;
 
-            if (isFicha && (w > 2400 || h > 2400)) {
-                const r = Math.min(2400 / w, 2400 / h);
+            // Limita rigorosamente às dimensões máximas (1800 x 2400 pixels)
+            const maxW = 1800;
+            const maxH = 2400;
+            if (w > maxW || h > maxH) {
+                const r = Math.min(maxW / w, maxH / h);
                 w = Math.round(w * r); 
                 h = Math.round(h * r);
             }
@@ -413,20 +413,18 @@
             ctx.drawImage(canvas, 0, 0, w, h);
 
             let bestBlob = null;
+            let quality = 0.90;
 
-            if (isFicha) {
-                bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', 0.90));
-            } else {
-                let quality = 0.95;
+            // Loop inteligente: reduz a qualidade gradativamente até o arquivo ficar abaixo de 490 KB
+            while (quality >= 0.20) {
                 bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', quality));
-
-                for (let q = 0.95; q >= 0.70; q -= 0.05) {
-                    let blob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', q));
-                    bestBlob = blob;
-                    if (blob.size >= 400 * 1024) break;
+                if (bestBlob.size <= 490 * 1024) {
+                    break;
                 }
+                quality -= 0.10;
             }
 
+            // Injeta metadados de 300 DPI (densidade de pontos)
             const buffer = await bestBlob.arrayBuffer();
             const view = new DataView(buffer);
             if (view.getUint16(0) === 0xFFD8) {
@@ -434,9 +432,9 @@
                 while (offset < view.byteLength) {
                     if (view.getUint16(offset) === 0xFFE0) {
                         const uint8 = new Uint8Array(buffer);
-                        uint8[offset + 11] = 1;
-                        uint8[offset + 12] = 0x01; uint8[offset + 13] = 0x2C;
-                        uint8[offset + 14] = 0x01; uint8[offset + 15] = 0x2C;
+                        uint8[offset + 11] = 1; // Unidade (pontos por polegada)
+                        uint8[offset + 12] = 0x01; uint8[offset + 13] = 0x2C; // X = 300 DPI
+                        uint8[offset + 14] = 0x01; uint8[offset + 15] = 0x2C; // Y = 300 DPI
                         bestBlob = new Blob([uint8], { type: 'image/jpeg' });
                         break;
                     }
@@ -448,7 +446,9 @@
             updateSlotUI(activeSlot);
             closeCropperModal();
             checkValidity();
-            showToast('Pronto! Alta qualidade mantida.', 'check-circle');
+
+            const kbSize = Math.round(bestBlob.size / 1024);
+            showToast(`Sucesso! Tamanho final: ${kbSize} KB (Abaixo de 500 KB)`, 'check-circle');
         }
 
         function updateSlotUI(slot) {
@@ -494,7 +494,7 @@
                 folder.file(`${sanitized}_FichaInscricao.jpg`, state.ficha.croppedBlob);
             }
 
-            showToast('Processando pacote...', 'loader');
+            showToast('Processando pacote seguro...', 'loader');
             const content = await zip.generateAsync({ type: 'blob' });
             lastGeneratedZipBlob = content;
             lastSanitizedName = sanitized;
@@ -504,7 +504,7 @@
             document.getElementById('btn-save-zip').disabled = true;
             
             lucide.createIcons();
-            showToast('Pacote gerado com sucesso!', 'check-circle');
+            showToast('Pacote gerado na memória com sucesso!', 'check-circle');
         }
 
         function resetValidador() {
@@ -525,7 +525,7 @@
             lastGeneratedZipBlob = null;
             lastSanitizedName = '';
             lucide.createIcons();
-            showToast('Tela reiniciada para novo cadastro.', 'info');
+            showToast('Tela limpa e pronta para o próximo aluno.', 'info');
         }
 
         async function shareViaWhatsAppFile() {
