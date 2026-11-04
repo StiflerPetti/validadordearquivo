@@ -191,14 +191,20 @@
         <section class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
             <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div class="space-y-1 text-center sm:text-left">
-                    <h3 class="font-bold text-slate-900">Salvar Pacote</h3>
-                    <p class="text-xs text-slate-500">Gera um arquivo .ZIP nomeado automaticamente.</p>
+                    <h3 class="font-bold text-slate-900">Gerenciar Pacote</h3>
+                    <p class="text-xs text-slate-500">Processa os arquivos de forma segura sem salvar no computador.</p>
                 </div>
-                <button id="btn-save-zip" onclick="generateZipPackage()" disabled 
-                    class="w-full sm:w-auto px-8 py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm">
-                    <i data-lucide="download" class="w-5 h-5"></i>
-                    Salvar e Baixar Pacote (.ZIP)
-                </button>
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <button id="btn-save-zip" onclick="generateZipPackage()" disabled 
+                        class="flex-1 sm:flex-none px-6 py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm">
+                        <i data-lucide="package" class="w-5 h-5"></i>
+                        Gerar Pacote (.ZIP)
+                    </button>
+                    <button onclick="resetValidador()" 
+                        class="px-4 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 text-sm" title="Limpar e Reiniciar">
+                        <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                    </button>
+                </div>
             </div>
 
             <!-- WhatsApp Section -->
@@ -208,8 +214,8 @@
                         <i data-lucide="message-circle" class="w-6 h-6"></i>
                     </div>
                     <div>
-                        <h4 class="font-bold text-slate-900 text-sm">Enviar Documentos via WhatsApp</h4>
-                        <p class="text-xs text-slate-500">Compartilhe o arquivo .ZIP ou envie uma mensagem direta.</p>
+                        <h4 class="font-bold text-slate-900 text-sm">Pronto para Envio</h4>
+                        <p class="text-xs text-slate-500">Envie diretamente pelo WhatsApp ou limpe a tela para o próximo.</p>
                     </div>
                 </div>
                 <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
@@ -268,7 +274,7 @@
         <span id="toast-msg">Mensagem</span>
     </div>
 
-   <!-- Script Principal -->
+    <!-- Script Principal -->
     <script>
         const state = {
             rosto: { rawSrc: null, croppedBlob: null, pdfDoc: null, currentPage: 1, totalPages: 1 },
@@ -388,11 +394,9 @@
             const canvas = cropperInstance.getCroppedCanvas();
             const isFicha = (activeSlot === 'ficha');
             
-            // Mantém as dimensões reais do corte sem redimensionamentos arbitrários agressivos
             let w = canvas.width;
             let h = canvas.height;
 
-            // Se for ficha e muito gigante, limita apenas o teto excessivo (ex: 2400px) para não travar o navegador
             if (isFicha && (w > 2400 || h > 2400)) {
                 const r = Math.min(2400 / w, 2400 / h);
                 w = Math.round(w * r); 
@@ -403,7 +407,6 @@
             targetCanvas.width = w; 
             targetCanvas.height = h;
             
-            // Ativa suavização de alta qualidade no navegador
             const ctx = targetCanvas.getContext('2d');
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
@@ -412,26 +415,18 @@
             let bestBlob = null;
 
             if (isFicha) {
-                // Ficha mantém uma excelente qualidade fixa alta (90%)
                 bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', 0.90));
             } else {
-                // Para Rosto e Documento: Buscamos a maior qualidade possível mantendo o arquivo rico em detalhes,
-                // mirando próximo a 450 KB - 500 KB se a imagem original permitir.
-                let quality = 0.95; // Começa com 95% de qualidade (altíssima nitidez)
+                let quality = 0.95;
                 bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', quality));
 
-                // Se o arquivo ficou menor que 300 KB e a qualidade ainda pode subir, ou se quisermos garantir que aproveite o espaço:
-                // Mantemos em 0.95 (ou 0.92) para garantir que texturas e traços não sejam esmagados por compressão.
-                // Caso queira forçar uma varredura para chegar perto de 450KB:
                 for (let q = 0.95; q >= 0.70; q -= 0.05) {
                     let blob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', q));
                     bestBlob = blob;
-                    // Se o arquivo encostou ou passou de ~400-450KB, paramos de descer a qualidade para não perder mais nitidez
                     if (blob.size >= 400 * 1024) break;
                 }
             }
 
-            // Injeta 300 DPI no cabeçalho do JPEG para padrão de impressão/documento
             const buffer = await bestBlob.arrayBuffer();
             const view = new DataView(buffer);
             if (view.getUint16(0) === 0xFFD8) {
@@ -476,6 +471,7 @@
             const name = document.getElementById('fullName').value.trim();
             const hasAtLeastOneFile = state.rosto.croppedBlob || state.documento.croppedBlob || state.ficha.croppedBlob;
             const ready = name.length > 2 && hasAtLeastOneFile;
+            
             document.getElementById('btn-save-zip').disabled = !ready;
         }
 
@@ -498,14 +494,38 @@
                 folder.file(`${sanitized}_FichaInscricao.jpg`, state.ficha.croppedBlob);
             }
 
-            showToast('Gerando ZIP...', 'loader');
+            showToast('Processando pacote...', 'loader');
             const content = await zip.generateAsync({ type: 'blob' });
             lastGeneratedZipBlob = content;
             lastSanitizedName = sanitized;
 
-            saveAs(content, `${sanitized}_Documentos.zip`);
             document.getElementById('whatsapp-section').classList.remove('hidden');
-            showToast('Download concluído!', 'check-circle');
+            document.getElementById('btn-save-zip').innerHTML = `<i data-lucide="check" class="w-5 h-5"></i> Pacote Pronto`;
+            document.getElementById('btn-save-zip').disabled = true;
+            
+            lucide.createIcons();
+            showToast('Pacote gerado com sucesso!', 'check-circle');
+        }
+
+        function resetValidador() {
+            document.getElementById('fullName').value = '';
+            ['rosto', 'documento', 'ficha'].forEach(slot => {
+                state[slot] = { rawSrc: null, croppedBlob: null, pdfDoc: null, currentPage: 1, totalPages: 1 };
+                document.getElementById(`preview-container-${slot}`).classList.add('hidden');
+                document.getElementById(`placeholder-${slot}`).classList.remove('hidden');
+                document.getElementById(`btn-crop-${slot}`).classList.add('hidden');
+                const badge = document.getElementById(`badge-${slot}`);
+                badge.className = "text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md";
+                badge.innerText = "Pendente";
+            });
+            document.getElementById('whatsapp-section').classList.add('hidden');
+            const btnSave = document.getElementById('btn-save-zip');
+            btnSave.innerHTML = `<i data-lucide="package" class="w-5 h-5"></i> Gerar Pacote (.ZIP)`;
+            btnSave.disabled = true;
+            lastGeneratedZipBlob = null;
+            lastSanitizedName = '';
+            lucide.createIcons();
+            showToast('Tela reiniciada para novo cadastro.', 'info');
         }
 
         async function shareViaWhatsAppFile() {
@@ -524,7 +544,7 @@
         function openWhatsAppChat() {
             const name = lastSanitizedName ? lastSanitizedName.replace(/_/g, ' ') : '';
             const text = encodeURIComponent(`Olá! Aqui estão os documentos de ${name}.`);
-            window.open(`https://api.whatsapp.com/send` + `?text=${text}`, '_blank');
+            window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
         }
 
         function showToast(msg, icon = 'info') {
