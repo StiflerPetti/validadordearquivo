@@ -268,7 +268,7 @@
         <span id="toast-msg">Mensagem</span>
     </div>
 
-    <!-- Script Principal -->
+   <!-- Script Principal -->
     <script>
         const state = {
             rosto: { rawSrc: null, croppedBlob: null, pdfDoc: null, currentPage: 1, totalPages: 1 },
@@ -383,47 +383,55 @@
 
         async function applyCrop() {
             if (!cropperInstance || !activeSlot) return;
-            showToast('Otimizando imagem...', 'loader');
+            showToast('Processando em alta qualidade...', 'loader');
 
             const canvas = cropperInstance.getCroppedCanvas();
             const isFicha = (activeSlot === 'ficha');
-            let w = canvas.width, h = canvas.height;
+            
+            // Mantém as dimensões reais do corte sem redimensionamentos arbitrários agressivos
+            let w = canvas.width;
+            let h = canvas.height;
 
-            if (isFicha) {
-                if (w > 2000 || h > 2000) {
-                    const r = Math.min(2000 / w, 2000 / h);
-                    w = Math.round(w * r); h = Math.round(h * r);
-                }
-            } else {
-                if (w < 600 || h < 800) { w = 900; h = 1200; }
-                else if (w > 1800 || h > 2400) { w = 1500; h = 2000; }
-                else { h = Math.round(w / (3/4)); }
+            // Se for ficha e muito gigante, limita apenas o teto excessivo (ex: 2400px) para não travar o navegador
+            if (isFicha && (w > 2400 || h > 2400)) {
+                const r = Math.min(2400 / w, 2400 / h);
+                w = Math.round(w * r); 
+                h = Math.round(h * r);
             }
 
             const targetCanvas = document.createElement('canvas');
-            targetCanvas.width = w; targetCanvas.height = h;
-            targetCanvas.getContext('2d').drawImage(canvas, 0, 0, w, h);
+            targetCanvas.width = w; 
+            targetCanvas.height = h;
+            
+            // Ativa suavização de alta qualidade no navegador
+            const ctx = targetCanvas.getContext('2d');
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(canvas, 0, 0, w, h);
 
             let bestBlob = null;
+
             if (isFicha) {
-                bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', 0.85));
+                // Ficha mantém uma excelente qualidade fixa alta (90%)
+                bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', 0.90));
             } else {
-                let minQ = 0.1, maxQ = 1.0;
-                for (let i = 0; i < 6; i++) {
-                    let q = (minQ + maxQ) / 2;
+                // Para Rosto e Documento: Buscamos a maior qualidade possível mantendo o arquivo rico em detalhes,
+                // mirando próximo a 450 KB - 500 KB se a imagem original permitir.
+                let quality = 0.95; // Começa com 95% de qualidade (altíssima nitidez)
+                bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', quality));
+
+                // Se o arquivo ficou menor que 300 KB e a qualidade ainda pode subir, ou se quisermos garantir que aproveite o espaço:
+                // Mantemos em 0.95 (ou 0.92) para garantir que texturas e traços não sejam esmagados por compressão.
+                // Caso queira forçar uma varredura para chegar perto de 450KB:
+                for (let q = 0.95; q >= 0.70; q -= 0.05) {
                     let blob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', q));
-                    let kb = blob.size / 1024;
-                    if (kb >= 50 && kb <= 500) { bestBlob = blob; break; }
-                    else if (kb > 500) maxQ = q;
-                    else minQ = q;
                     bestBlob = blob;
-                }
-                if (bestBlob.size < 50 * 1024) {
-                    bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', 0.85));
+                    // Se o arquivo encostou ou passou de ~400-450KB, paramos de descer a qualidade para não perder mais nitidez
+                    if (blob.size >= 400 * 1024) break;
                 }
             }
 
-            // Inject 300 DPI
+            // Injeta 300 DPI no cabeçalho do JPEG para padrão de impressão/documento
             const buffer = await bestBlob.arrayBuffer();
             const view = new DataView(buffer);
             if (view.getUint16(0) === 0xFFD8) {
@@ -445,7 +453,7 @@
             updateSlotUI(activeSlot);
             closeCropperModal();
             checkValidity();
-            showToast('Pronto!', 'check-circle');
+            showToast('Pronto! Alta qualidade mantida.', 'check-circle');
         }
 
         function updateSlotUI(slot) {
@@ -466,11 +474,8 @@
 
         function checkValidity() {
             const name = document.getElementById('fullName').value.trim();
-            
-            // Verifica se o nome tem mais de 2 letras E se pelo menos UM dos slots tem um blob gerado
             const hasAtLeastOneFile = state.rosto.croppedBlob || state.documento.croppedBlob || state.ficha.croppedBlob;
             const ready = name.length > 2 && hasAtLeastOneFile;
-            
             document.getElementById('btn-save-zip').disabled = !ready;
         }
 
@@ -483,7 +488,6 @@
             const zip = new JSZip();
             const folder = zip.folder(sanitized);
             
-            // Adiciona ao ZIP dinamicamente apenas os arquivos que foram preenchidos
             if (state.rosto.croppedBlob) {
                 folder.file(`${sanitized}_Rosto.jpg`, state.rosto.croppedBlob);
             }
@@ -520,7 +524,7 @@
         function openWhatsAppChat() {
             const name = lastSanitizedName ? lastSanitizedName.replace(/_/g, ' ') : '';
             const text = encodeURIComponent(`Olá! Aqui estão os documentos de ${name}.`);
-            window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
+            window.open(`https://api.whatsapp.com/send` + `?text=${text}`, '_blank');
         }
 
         function showToast(msg, icon = 'info') {
