@@ -162,7 +162,7 @@
                             <span id="badge-ficha" class="text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md">Pendente</span>
                         </div>
                         <h3 class="font-bold text-slate-900 text-base mb-1">Ficha de Inscrição</h3>
-                        <p class="text-xs text-slate-500 mb-4">Formato original compacto.</p>
+                        <p class="text-xs text-slate-500 mb-4">Formato livre / compacto.</p>
                         
                         <div id="dropzone-ficha" onclick="triggerFileInput('ficha')" 
                              class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-brand-500 hover:bg-slate-50 transition-all min-h-[220px] flex flex-col items-center justify-center relative overflow-hidden bg-slate-50">
@@ -237,7 +237,7 @@
     <div id="cropper-modal" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-2xl shadow-xl max-w-3xl w-full flex flex-col max-h-[90vh] overflow-hidden border border-slate-200">
             <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-                <h3 class="font-bold text-slate-900 text-sm">Ajustar e Enquadrar Imagem</h3>
+                <h3 id="cropper-modal-title" class="font-bold text-slate-900 text-sm">Ajustar e Enquadrar Imagem</h3>
                 <button onclick="closeCropperModal()" class="text-slate-400 hover:text-slate-600"><i data-lucide="x" class="w-5 h-5"></i></button>
             </div>
             
@@ -368,6 +368,8 @@
             if (cropperInstance) cropperInstance.destroy();
 
             const isFicha = (activeSlot === 'ficha');
+            document.getElementById('cropper-modal-title').innerText = isFicha ? 'Ajustar e Visualizar Ficha' : 'Ajustar e Enquadrar Imagem';
+
             cropperInstance = new Cropper(img, {
                 aspectRatio: isFicha ? NaN : (3 / 4),
                 viewMode: 1,
@@ -391,12 +393,12 @@
 
         async function applyCrop() {
             if (!cropperInstance || !activeSlot) return;
-            showToast('Ajustando ao padrão da ONG...', 'loader');
+            showToast('Processando arquivo...', 'loader');
 
             const canvas = cropperInstance.getCroppedCanvas();
             
-            // Força um tamanho padrão seguro em pixels (dentro do limite 600x800 a 1800x2400)
-            const targetWidth = 1200;
+            // Define largura alvo segura mantendo proporção
+            const targetWidth = 1400;
             const targetHeight = Math.round(targetWidth * (canvas.height / canvas.width));
 
             const targetCanvas = document.createElement('canvas');
@@ -408,30 +410,13 @@
             ctx.imageSmoothingQuality = 'high';
             ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight);
 
-            // Testa diretamente uma qualidade fixa de 70% que garante tamanho leve
-            let bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', 0.70));
+            // Compressão progressiva para garantir obrigatoriamente < 500KB
+            let quality = 0.75;
+            let bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', quality));
 
-            // Se por acaso ainda passar de 480KB, reduz a qualidade para 50%
-            if (bestBlob.size > 480 * 1024) {
-                bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', 0.50));
-            }
-
-            // Injeta metadados de 300 DPI
-            const buffer = await bestBlob.arrayBuffer();
-            const view = new DataView(buffer);
-            if (view.getUint16(0) === 0xFFD8) {
-                let offset = 2;
-                while (offset < view.byteLength) {
-                    if (view.getUint16(offset) === 0xFFE0) {
-                        const uint8 = new Uint8Array(buffer);
-                        uint8[offset + 11] = 1;
-                        uint8[offset + 12] = 0x01; uint8[offset + 13] = 0x2C;
-                        uint8[offset + 14] = 0x01; uint8[offset + 15] = 0x2C;
-                        bestBlob = new Blob([uint8], { type: 'image/jpeg' });
-                        break;
-                    }
-                    offset += 2 + view.getUint16(offset + 2);
-                }
+            while (bestBlob.size > 480 * 1024 && quality > 0.2) {
+                quality -= 0.15;
+                bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', quality));
             }
 
             state[activeSlot].croppedBlob = bestBlob;
