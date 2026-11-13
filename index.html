@@ -65,7 +65,7 @@
                 </div>
                 <div>
                     <h1 class="text-lg font-bold text-slate-900 leading-tight">Validador de Fotos & Documentos</h1>
-                    <p class="text-xs text-slate-500">Enquadramento, suporte a HEIC/PDF, redimensionamento (máx 500KB) e ZIP</p>
+                    <p class="text-xs text-slate-500">Enquadramento estrito (Slot 1: 900x1200 px), suporte HEIC e ZIP</p>
                 </div>
             </div>
         </div>
@@ -107,7 +107,7 @@
                             <span id="badge-rosto" class="text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md">Pendente</span>
                         </div>
                         <h3 class="font-bold text-slate-900 text-base mb-1">Foto do Rosto</h3>
-                        <p class="text-xs text-slate-500 mb-4">Proporção 3:4 (Máx 500 KB).</p>
+                        <p class="text-xs text-slate-500 mb-4">Proporção 3:4 (Exato: 900x1200 px).</p>
                         
                         <div id="dropzone-rosto" onclick="triggerFileInput('rosto')" 
                              class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-brand-500 hover:bg-slate-50 transition-all min-h-[220px] flex flex-col items-center justify-center relative overflow-hidden bg-slate-50">
@@ -194,7 +194,7 @@
             <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div class="space-y-1 text-center sm:text-left">
                     <h3 class="font-bold text-slate-900">Gerenciar Pacote</h3>
-                    <p class="text-xs text-slate-500">Processa os arquivos na memória sem deixar rastros no PC ou celular.</p>
+                    <p class="text-xs text-slate-500">Processa os arquivos na memória sem deixar rastros no dispositivo.</p>
                 </div>
                 <div class="flex items-center gap-2 w-full sm:w-auto">
                     <button id="btn-save-zip" onclick="generateZipPackage()" disabled 
@@ -305,7 +305,6 @@
             if (!file) return;
             activeSlot = slot;
 
-            // Verifica se é HEIC/HEIF da Apple e converte automaticamente para JPEG
             const isHeic = file.type === "image/heic" || file.type === "image/heif" || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
             if (isHeic) {
                 showToast('Convertendo arquivo HEIC da Apple...', 'loader');
@@ -419,8 +418,21 @@
 
             const canvas = cropperInstance.getCroppedCanvas();
             
-            const targetWidth = 1400;
-            const targetHeight = Math.round(targetWidth * (canvas.height / canvas.width));
+            let targetWidth, targetHeight;
+
+            if (activeSlot === 'rosto') {
+                // REGRA EXATA DO SLOT 1: Largura entre 600-1200 e Altura entre 800-1600 (Fixamos em 900x1200 px)
+                targetWidth = 900;
+                targetHeight = 1200;
+            } else if (activeSlot === 'documento') {
+                // Slot 2 (Documento): Mantém proporção 3:4 com largura 1200 px (1200x1600 px)
+                targetWidth = 1200;
+                targetHeight = Math.round(targetWidth * (canvas.height / canvas.width));
+            } else {
+                // Slot 3 (Ficha): Formato livre proporcional com largura máxima de 1400 px
+                targetWidth = 1400;
+                targetHeight = Math.round(targetWidth * (canvas.height / canvas.width));
+            }
 
             const targetCanvas = document.createElement('canvas');
             targetCanvas.width = targetWidth; 
@@ -431,7 +443,7 @@
             ctx.imageSmoothingQuality = 'high';
             ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight);
 
-            let quality = 0.75;
+            let quality = 0.80;
             let bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', quality));
 
             while (bestBlob.size > 480 * 1024 && quality > 0.2) {
@@ -445,7 +457,7 @@
             checkValidity();
 
             const kbSize = Math.round(bestBlob.size / 1024);
-            showToast(`Pronto! Arquivo com ${kbSize} KB (Aprovado!)`, 'check-circle');
+            showToast(`Pronto! ${targetWidth}x${targetHeight}px (${kbSize} KB)`, 'check-circle');
         }
 
         function updateSlotUI(slot) {
