@@ -12,13 +12,7 @@
             theme: {
                 extend: {
                     colors: {
-                        brand: {
-                            50: '#f0f7ff',
-                            100: '#e0effe',
-                            500: '#2563eb',
-                            600: '#1d4ed8',
-                            700: '#1e40af',
-                        }
+                        brand: { 50: '#f0f7ff', 100: '#e0effe', 500: '#2563eb', 600: '#1d4ed8', 700: '#1e40af' }
                     }
                 }
             }
@@ -35,10 +29,8 @@
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     </script>
 
-    <!-- JSZip -->
+    <!-- JSZip & heic2any -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-
-    <!-- heic2any (Conversão automática de fotos do iOS) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any.min.js"></script>
     
     <!-- Lucide Icons -->
@@ -65,7 +57,7 @@
                 </div>
                 <div>
                     <h1 class="text-lg font-bold text-slate-900 leading-tight">Validador de Fotos & Documentos</h1>
-                    <p class="text-xs text-slate-500">Enquadramento estrito (Slot 1: 900x1200 px), suporte HEIC e ZIP</p>
+                    <p class="text-xs text-slate-500">Enquadramento travado (Slot 1: 900x1200 px), suporte HEIC e ZIP</p>
                 </div>
             </div>
         </div>
@@ -97,95 +89,8 @@
                 <span class="text-xs text-slate-500">* Preencha pelo menos 1 item</span>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                
-                <!-- Slot 1: Rosto -->
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="text-xs font-bold uppercase tracking-wider text-brand-600 bg-brand-50 px-2.5 py-1 rounded-md">Slot 1</span>
-                            <span id="badge-rosto" class="text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md">Pendente</span>
-                        </div>
-                        <h3 class="font-bold text-slate-900 text-base mb-1">Foto do Rosto</h3>
-                        <p class="text-xs text-slate-500 mb-4">Proporção 3:4 (Exato: 900x1200 px).</p>
-                        
-                        <div id="dropzone-rosto" onclick="triggerFileInput('rosto')" 
-                             class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-brand-500 hover:bg-slate-50 transition-all min-h-[220px] flex flex-col items-center justify-center relative overflow-hidden bg-slate-50">
-                            <div id="preview-container-rosto" class="hidden absolute inset-0 bg-white flex flex-col items-center justify-center p-2">
-                                <img id="preview-img-rosto" class="max-h-full max-w-full object-contain rounded-lg">
-                            </div>
-                            <div id="placeholder-rosto" class="flex flex-col items-center space-y-2">
-                                <div class="p-3 bg-white rounded-full border border-slate-200 text-slate-500"><i data-lucide="upload-cloud" class="w-6 h-6"></i></div>
-                                <div class="text-xs text-slate-600 font-medium">Clique ou arraste a foto</div>
-                            </div>
-                        </div>
-                        <input type="file" id="file-rosto" accept="image/*,.heic,.heif,.pdf" class="hidden" onchange="handleFileSelect(event, 'rosto')">
-                    </div>
-                    <div class="mt-4 pt-4 border-t border-slate-100">
-                        <button id="btn-crop-rosto" onclick="reopenCropper('rosto')" class="hidden w-full py-2 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center gap-1.5">
-                            <i data-lucide="crop" class="w-3.5 h-3.5"></i> Reajustar Recorte
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Slot 2: Documento Pessoal -->
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="text-xs font-bold uppercase tracking-wider text-brand-600 bg-brand-50 px-2.5 py-1 rounded-md">Slot 2</span>
-                            <span id="badge-documento" class="text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md">Pendente</span>
-                        </div>
-                        <h3 class="font-bold text-slate-900 text-base mb-1">Documento Pessoal</h3>
-                        <p class="text-xs text-slate-500 mb-4">Proporção 3:4 (RG/CNH).</p>
-                        
-                        <div id="dropzone-documento" onclick="triggerFileInput('documento')" 
-                             class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-brand-500 hover:bg-slate-50 transition-all min-h-[220px] flex flex-col items-center justify-center relative overflow-hidden bg-slate-50">
-                            <div id="preview-container-documento" class="hidden absolute inset-0 bg-white flex flex-col items-center justify-center p-2">
-                                <img id="preview-img-documento" class="max-h-full max-w-full object-contain rounded-lg">
-                            </div>
-                            <div id="placeholder-documento" class="flex flex-col items-center space-y-2">
-                                <div class="p-3 bg-white rounded-full border border-slate-200 text-slate-500"><i data-lucide="upload-cloud" class="w-6 h-6"></i></div>
-                                <div class="text-xs text-slate-600 font-medium">Clique ou arraste o documento</div>
-                            </div>
-                        </div>
-                        <input type="file" id="file-documento" accept="image/*,.heic,.heif,.pdf" class="hidden" onchange="handleFileSelect(event, 'documento')">
-                    </div>
-                    <div class="mt-4 pt-4 border-t border-slate-100">
-                        <button id="btn-crop-documento" onclick="reopenCropper('documento')" class="hidden w-full py-2 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center gap-1.5">
-                            <i data-lucide="crop" class="w-3.5 h-3.5"></i> Reajustar Recorte
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Slot 3: Ficha de Inscrição -->
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between">
-                    <div>
-                        <div class="flex items-center justify-between mb-3">
-                            <span class="text-xs font-bold uppercase tracking-wider text-brand-600 bg-brand-50 px-2.5 py-1 rounded-md">Slot 3</span>
-                            <span id="badge-ficha" class="text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md">Pendente</span>
-                        </div>
-                        <h3 class="font-bold text-slate-900 text-base mb-1">Ficha de Inscrição</h3>
-                        <p class="text-xs text-slate-500 mb-4">Formato livre / compacto.</p>
-                        
-                        <div id="dropzone-ficha" onclick="triggerFileInput('ficha')" 
-                             class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-brand-500 hover:bg-slate-50 transition-all min-h-[220px] flex flex-col items-center justify-center relative overflow-hidden bg-slate-50">
-                            <div id="preview-container-ficha" class="hidden absolute inset-0 bg-white flex flex-col items-center justify-center p-2">
-                                <img id="preview-img-ficha" class="max-h-full max-w-full object-contain rounded-lg">
-                            </div>
-                            <div id="placeholder-ficha" class="flex flex-col items-center space-y-2">
-                                <div class="p-3 bg-white rounded-full border border-slate-200 text-slate-500"><i data-lucide="upload-cloud" class="w-6 h-6"></i></div>
-                                <div class="text-xs text-slate-600 font-medium">Clique ou arraste a ficha</div>
-                            </div>
-                        </div>
-                        <input type="file" id="file-ficha" accept="image/*,.heic,.heif,.pdf" class="hidden" onchange="handleFileSelect(event, 'ficha')">
-                    </div>
-                    <div class="mt-4 pt-4 border-t border-slate-100">
-                        <button id="btn-crop-ficha" onclick="reopenCropper('ficha')" class="hidden w-full py-2 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center gap-1.5">
-                            <i data-lucide="crop" class="w-3.5 h-3.5"></i> Reajustar Visualização
-                        </button>
-                    </div>
-                </div>
-
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6" id="slots-container">
+                <!-- Slot Template Renderizado via Loop dinâmico abaixo -->
             </div>
         </section>
 
@@ -199,8 +104,7 @@
                 <div class="flex items-center gap-2 w-full sm:w-auto">
                     <button id="btn-save-zip" onclick="generateZipPackage()" disabled 
                         class="flex-1 sm:flex-none px-6 py-3.5 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm">
-                        <i data-lucide="package" class="w-5 h-5"></i>
-                        Gerar Pacote (.ZIP)
+                        <i data-lucide="package" class="w-5 h-5"></i> Gerar Pacote (.ZIP)
                     </button>
                     <button onclick="resetValidador()" 
                         class="px-4 py-3.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl transition-all flex items-center justify-center gap-2 text-sm" title="Limpar e Reiniciar">
@@ -212,9 +116,7 @@
             <!-- WhatsApp & Download Section -->
             <div id="whatsapp-section" class="hidden pt-6 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
                 <div class="flex items-center gap-3">
-                    <div class="bg-emerald-500 text-white p-2.5 rounded-xl">
-                        <i data-lucide="check-circle-2" class="w-6 h-6"></i>
-                    </div>
+                    <div class="bg-emerald-500 text-white p-2.5 rounded-xl"><i data-lucide="check-circle-2" class="w-6 h-6"></i></div>
                     <div>
                         <h4 class="font-bold text-slate-900 text-sm">Pacote Pronto</h4>
                         <p class="text-xs text-slate-500">Baixe para o dispositivo ou envie pelo WhatsApp.</p>
@@ -233,7 +135,6 @@
                 </div>
             </div>
         </section>
-
     </main>
 
     <!-- Modal Cropper -->
@@ -253,336 +154,4 @@
                 </div>
             </div>
 
-            <div class="flex-1 p-4 bg-slate-900 relative min-h-[350px] flex items-center justify-center">
-                <img id="cropper-image" class="max-h-[60vh] max-w-full block">
-            </div>
-
-            <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                    <button onclick="rotateCropper(-90)" class="p-2 bg-white border rounded-lg"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>
-                    <button onclick="rotateCropper(90)" class="p-2 bg-white border rounded-lg"><i data-lucide="rotate-cw" class="w-4 h-4"></i></button>
-                    <button onclick="resetCropper()" class="p-2 bg-white border rounded-lg"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
-                </div>
-                <div class="flex items-center gap-3">
-                    <button onclick="closeCropperModal()" class="px-4 py-2 text-xs font-semibold text-slate-600">Cancelar</button>
-                    <button onclick="applyCrop()" class="px-5 py-2 text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg flex items-center gap-1.5">
-                        <i data-lucide="check" class="w-4 h-4"></i> Confirmar
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Toast -->
-    <div id="toast" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg text-xs flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300">
-        <i id="toast-icon" data-lucide="info" class="w-4 h-4 text-brand-400"></i>
-        <span id="toast-msg">Mensagem</span>
-    </div>
-
-    <!-- Script Principal -->
-    <script>
-        const state = {
-            rosto: { rawSrc: null, croppedBlob: null, pdfDoc: null, currentPage: 1, totalPages: 1 },
-            documento: { rawSrc: null, croppedBlob: null, pdfDoc: null, currentPage: 1, totalPages: 1 },
-            ficha: { rawSrc: null, croppedBlob: null, pdfDoc: null, currentPage: 1, totalPages: 1 }
-        };
-
-        let activeSlot = null;
-        let cropperInstance = null;
-        let lastGeneratedZipBlob = null;
-        let lastSanitizedName = '';
-
-        document.addEventListener('DOMContentLoaded', () => {
-            lucide.createIcons();
-        });
-
-        function triggerFileInput(slot) {
-            document.getElementById(`file-${slot}`).click();
-        }
-
-        async function handleFileSelect(event, slot) {
-            let file = event.target.files[0];
-            if (!file) return;
-            activeSlot = slot;
-
-            const isHeic = file.type === "image/heic" || file.type === "image/heif" || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
-            if (isHeic) {
-                showToast('Convertendo arquivo HEIC da Apple...', 'loader');
-                try {
-                    const convertedBlob = await heic2any({
-                        blob: file,
-                        toType: "image/jpeg",
-                        quality: 0.9
-                    });
-                    const finalBlob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
-                    file = new File([finalBlob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", { type: "image/jpeg" });
-                } catch (err) {
-                    showToast('Erro ao converter arquivo HEIC.', 'alert-circle');
-                    event.target.value = '';
-                    return;
-                }
-            }
-
-            if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
-                try {
-                    showToast('Lendo PDF...', 'loader');
-                    const arrayBuffer = await file.arrayBuffer();
-                    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-                    state[slot].pdfDoc = pdf;
-                    state[slot].totalPages = pdf.numPages;
-                    state[slot].currentPage = 1;
-                    await renderPdfPageToCropper(slot, 1);
-                } catch (err) {
-                    showToast('Erro ao abrir PDF.', 'alert-circle');
-                }
-            } else if (file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = (e) => {
-                    state[slot].rawSrc = e.target.result;
-                    state[slot].pdfDoc = null;
-                    openCropperModal(e.target.result);
-                };
-                reader.readAsDataURL(file);
-            } else {
-                showToast('Formato não suportado.', 'alert-circle');
-            }
-            event.target.value = '';
-        }
-
-        async function renderPdfPageToCropper(slot, pageNum) {
-            const pdf = state[slot].pdfDoc;
-            const page = await pdf.getPage(pageNum);
-            const viewport = page.getViewport({ scale: 2.0 });
-            const canvas = document.createElement('canvas');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
-            
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
-            state[slot].rawSrc = dataUrl;
-
-            const selector = document.getElementById('pdf-page-selector-container');
-            if (state[slot].totalPages > 1) {
-                selector.classList.remove('hidden');
-                document.getElementById('pdf-page-num').innerText = `${pageNum} / ${state[slot].totalPages}`;
-            } else {
-                selector.classList.add('hidden');
-            }
-            openCropperModal(dataUrl);
-        }
-
-        async function changePdfPage(delta) {
-            if (!activeSlot || !state[activeSlot].pdfDoc) return;
-            let newPage = state[activeSlot].currentPage + delta;
-            if (newPage >= 1 && newPage <= state[activeSlot].totalPages) {
-                state[activeSlot].currentPage = newPage;
-                await renderPdfPageToCropper(activeSlot, newPage);
-            }
-        }
-
-        function openCropperModal(imageSrc) {
-            const modal = document.getElementById('cropper-modal');
-            const img = document.getElementById('cropper-image');
-            img.src = imageSrc;
-            modal.classList.remove('hidden');
-
-            if (cropperInstance) cropperInstance.destroy();
-
-            const isFicha = (activeSlot === 'ficha');
-            document.getElementById('cropper-modal-title').innerText = isFicha ? 'Ajustar e Visualizar Ficha' : 'Ajustar e Enquadrar Imagem';
-
-            cropperInstance = new Cropper(img, {
-                aspectRatio: isFicha ? NaN : (3 / 4),
-                viewMode: 1,
-                autoCropArea: 0.9,
-                responsive: true,
-                background: false
-            });
-        }
-
-        function reopenCropper(slot) {
-            activeSlot = slot;
-            if (state[slot].rawSrc) openCropperModal(state[slot].rawSrc);
-        }
-
-        function rotateCropper(deg) { if (cropperInstance) cropperInstance.rotate(deg); }
-        function resetCropper() { if (cropperInstance) cropperInstance.reset(); }
-        function closeCropperModal() {
-            document.getElementById('cropper-modal').classList.add('hidden');
-            if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
-        }
-
-        async function applyCrop() {
-            if (!cropperInstance || !activeSlot) return;
-            showToast('Processando arquivo...', 'loader');
-
-            const canvas = cropperInstance.getCroppedCanvas();
-            
-            let targetWidth, targetHeight;
-
-            if (activeSlot === 'rosto') {
-                // REGRA EXATA DO SLOT 1: Largura entre 600-1200 e Altura entre 800-1600 (Fixamos em 900x1200 px)
-                targetWidth = 900;
-                targetHeight = 1200;
-            } else if (activeSlot === 'documento') {
-                // Slot 2 (Documento): Mantém proporção 3:4 com largura 1200 px (1200x1600 px)
-                targetWidth = 1200;
-                targetHeight = Math.round(targetWidth * (canvas.height / canvas.width));
-            } else {
-                // Slot 3 (Ficha): Formato livre proporcional com largura máxima de 1400 px
-                targetWidth = 1400;
-                targetHeight = Math.round(targetWidth * (canvas.height / canvas.width));
-            }
-
-            const targetCanvas = document.createElement('canvas');
-            targetCanvas.width = targetWidth; 
-            targetCanvas.height = targetHeight;
-            
-            const ctx = targetCanvas.getContext('2d');
-            ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = 'high';
-            ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight);
-
-            let quality = 0.80;
-            let bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', quality));
-
-            while (bestBlob.size > 480 * 1024 && quality > 0.2) {
-                quality -= 0.15;
-                bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', quality));
-            }
-
-            state[activeSlot].croppedBlob = bestBlob;
-            updateSlotUI(activeSlot);
-            closeCropperModal();
-            checkValidity();
-
-            const kbSize = Math.round(bestBlob.size / 1024);
-            showToast(`Pronto! ${targetWidth}x${targetHeight}px (${kbSize} KB)`, 'check-circle');
-        }
-
-        function updateSlotUI(slot) {
-            const preview = document.getElementById(`preview-container-${slot}`);
-            const img = document.getElementById(`preview-img-${slot}`);
-            const placeholder = document.getElementById(`placeholder-${slot}`);
-            const badge = document.getElementById(`badge-${slot}`);
-            const btnCrop = document.getElementById(`btn-crop-${slot}`);
-
-            img.src = URL.createObjectURL(state[slot].croppedBlob);
-            preview.classList.remove('hidden');
-            placeholder.classList.add('hidden');
-            btnCrop.classList.remove('hidden');
-            badge.className = "text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md";
-            badge.innerText = "Concluído";
-            lucide.createIcons();
-        }
-
-        function checkValidity() {
-            const name = document.getElementById('fullName').value.trim();
-            const hasAtLeastOneFile = state.rosto.croppedBlob || state.documento.croppedBlob || state.ficha.croppedBlob;
-            const ready = name.length > 2 && hasAtLeastOneFile;
-            
-            document.getElementById('btn-save-zip').disabled = !ready;
-        }
-
-        document.getElementById('fullName').addEventListener('input', checkValidity);
-
-        function downloadZipFile() {
-            if (!lastGeneratedZipBlob) return;
-            
-            const url = URL.createObjectURL(lastGeneratedZipBlob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `${lastSanitizedName || 'Documentos'}_Documentos.zip`;
-            
-            document.body.appendChild(link);
-            link.click();
-            
-            setTimeout(() => {
-                document.body.removeChild(link);
-                URL.revokeObjectURL(url);
-            }, 1000);
-        }
-
-        async function generateZipPackage() {
-            const rawName = document.getElementById('fullName').value.trim();
-            const sanitized = rawName.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9\s_]/g, "").trim().replace(/\s+/g, '_');
-
-            const zip = new JSZip();
-            const folder = zip.folder(sanitized);
-            
-            if (state.rosto.croppedBlob) {
-                folder.file(`${sanitized}_Rosto.jpg`, state.rosto.croppedBlob);
-            }
-            if (state.documento.croppedBlob) {
-                folder.file(`${sanitized}_Documento.jpg`, state.documento.croppedBlob);
-            }
-            if (state.ficha.croppedBlob) {
-                folder.file(`${sanitized}_FichaInscricao.jpg`, state.ficha.croppedBlob);
-            }
-
-            showToast('Processando pacote...', 'loader');
-            const content = await zip.generateAsync({ type: 'blob' });
-            lastGeneratedZipBlob = content;
-            lastSanitizedName = sanitized;
-
-            downloadZipFile();
-
-            document.getElementById('whatsapp-section').classList.remove('hidden');
-            document.getElementById('btn-save-zip').innerHTML = `<i data-lucide="check" class="w-5 h-5"></i> Pacote Gerado`;
-            document.getElementById('btn-save-zip').disabled = true;
-            
-            lucide.createIcons();
-            showToast('Download iniciado! Verifique suas notificações.', 'check-circle');
-        }
-
-        function resetValidador() {
-            document.getElementById('fullName').value = '';
-            ['rosto', 'documento', 'ficha'].forEach(slot => {
-                state[slot] = { rawSrc: null, croppedBlob: null, pdfDoc: null, currentPage: 1, totalPages: 1 };
-                document.getElementById(`preview-container-${slot}`).classList.add('hidden');
-                document.getElementById(`placeholder-${slot}`).classList.remove('hidden');
-                document.getElementById(`btn-crop-${slot}`).classList.add('hidden');
-                const badge = document.getElementById(`badge-${slot}`);
-                badge.className = "text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md";
-                badge.innerText = "Pendente";
-            });
-            document.getElementById('whatsapp-section').classList.add('hidden');
-            const btnSave = document.getElementById('btn-save-zip');
-            btnSave.innerHTML = `<i data-lucide="package" class="w-5 h-5"></i> Gerar Pacote (.ZIP)`;
-            btnSave.disabled = true;
-            lastGeneratedZipBlob = null;
-            lastSanitizedName = '';
-            lucide.createIcons();
-            showToast('Tela limpa e pronta para o próximo aluno.', 'info');
-        }
-
-        async function shareViaWhatsAppFile() {
-            if (!lastGeneratedZipBlob) return;
-            const file = new File([lastGeneratedZipBlob], `${lastSanitizedName}_Documentos.zip`, { type: 'application/zip' });
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                try {
-                    await navigator.share({ files: [file], title: 'Documentos', text: `Documentos de ${lastSanitizedName.replace(/_/g, ' ')}` });
-                } catch (e) {}
-            } else {
-                const text = encodeURIComponent(`Olá! Segue o arquivo ZIP de ${lastSanitizedName.replace(/_/g, ' ')}.`);
-                window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
-            }
-        }
-
-        function openWhatsAppChat() {
-            const name = lastSanitizedName ? lastSanitizedName.replace(/_/g, ' ') : '';
-            const text = encodeURIComponent(`Olá! Aqui estão os documentos de ${name}.`);
-            window.open(`https://api.whatsapp.com/send?text=${text}`, '_blank');
-        }
-
-        function showToast(msg, icon = 'info') {
-            const toast = document.getElementById('toast');
-            document.getElementById('toast-msg').innerText = msg;
-            document.getElementById('toast-icon').setAttribute('data-lucide', icon);
-            lucide.createIcons();
-            toast.classList.remove('translate-y-20', 'opacity-0');
-            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
-        }
-    </script>
-</body>
-</html>
+            <div class="flex-1 p-4 bg-slate-900 relative min-h-[350px] flex items-center justify
