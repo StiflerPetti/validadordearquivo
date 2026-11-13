@@ -154,4 +154,322 @@
                 </div>
             </div>
 
-            <div class="flex-1 p-4 bg-slate-900 relative min-h-[350px] flex items-center justify
+            <div class="flex-1 p-4 bg-slate-900 relative min-h-[350px] flex items-center justify-center">
+                <img id="cropper-image" class="max-h-[60vh] max-w-full block">
+            </div>
+
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <button onclick="rotateCropper(-90)" class="p-2 bg-white border rounded-lg"><i data-lucide="rotate-ccw" class="w-4 h-4"></i></button>
+                    <button onclick="rotateCropper(90)" class="p-2 bg-white border rounded-lg"><i data-lucide="rotate-cw" class="w-4 h-4"></i></button>
+                    <button onclick="resetCropper()" class="p-2 bg-white border rounded-lg"><i data-lucide="refresh-cw" class="w-4 h-4"></i></button>
+                </div>
+                <div class="flex items-center gap-3">
+                    <button onclick="closeCropperModal()" class="px-4 py-2 text-xs font-semibold text-slate-600">Cancelar</button>
+                    <button onclick="applyCrop()" class="px-5 py-2 text-xs font-semibold bg-brand-600 hover:bg-brand-700 text-white rounded-lg flex items-center gap-1.5">
+                        <i data-lucide="check" class="w-4 h-4"></i> Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-lg text-xs flex items-center gap-2 transform translate-y-20 opacity-0 transition-all duration-300">
+        <i id="toast-icon" data-lucide="info" class="w-4 h-4 text-brand-400"></i>
+        <span id="toast-msg">Mensagem</span>
+    </div>
+
+    <!-- Script Principal Unificado -->
+    <script>
+        const slotsConfig = [
+            { id: 'rosto', title: 'Foto do Rosto', desc: 'Proporção 3:4 (Fixado em 900x1200 px)' },
+            { id: 'documento', title: 'Documento Pessoal', desc: 'Proporção 3:4 (RG/CNH)' },
+            { id: 'ficha', title: 'Ficha de Inscrição', desc: 'Formato livre / compacto' }
+        ];
+
+        const state = {};
+        slotsConfig.forEach(s => state[s.id] = { rawSrc: null, croppedBlob: null, pdfDoc: null, currentPage: 1, totalPages: 1 });
+
+        let activeSlot = null;
+        let cropperInstance = null;
+        let lastGeneratedZipBlob = null;
+        let lastSanitizedName = '';
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderSlots();
+            lucide.createIcons();
+            document.getElementById('fullName').addEventListener('input', checkValidity);
+        });
+
+        function renderSlots() {
+            const container = document.getElementById('slots-container');
+            container.innerHTML = slotsConfig.map((s, idx) => `
+                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-bold uppercase tracking-wider text-brand-600 bg-brand-50 px-2.5 py-1 rounded-md">Slot ${idx + 1}</span>
+                            <span id="badge-${s.id}" class="text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md">Pendente</span>
+                        </div>
+                        <h3 class="font-bold text-slate-900 text-base mb-1">${s.title}</h3>
+                        <p class="text-xs text-slate-500 mb-4">${s.desc}</p>
+                        
+                        <div id="dropzone-${s.id}" onclick="triggerFileInput('${s.id}')" 
+                             class="border-2 border-dashed border-slate-300 rounded-xl p-4 text-center cursor-pointer hover:border-brand-500 hover:bg-slate-50 transition-all min-h-[220px] flex flex-col items-center justify-center relative overflow-hidden bg-slate-50">
+                            <div id="preview-container-${s.id}" class="hidden absolute inset-0 bg-white flex flex-col items-center justify-center p-2">
+                                <img id="preview-img-${s.id}" class="max-h-full max-w-full object-contain rounded-lg">
+                            </div>
+                            <div id="placeholder-${s.id}" class="flex flex-col items-center space-y-2">
+                                <div class="p-3 bg-white rounded-full border border-slate-200 text-slate-500"><i data-lucide="upload-cloud" class="w-6 h-6"></i></div>
+                                <div class="text-xs text-slate-600 font-medium">Clique ou arraste o arquivo</div>
+                            </div>
+                        </div>
+                        <input type="file" id="file-${s.id}" accept="image/*,.heic,.heif,.pdf" class="hidden" onchange="handleFileSelect(event, '${s.id}')">
+                    </div>
+                    <div class="mt-4 pt-4 border-t border-slate-100">
+                        <button id="btn-crop-${s.id}" onclick="reopenCropper('${s.id}')" class="hidden w-full py-2 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center gap-1.5">
+                            <i data-lucide="crop" class="w-3.5 h-3.5"></i> Reajustar
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function triggerFileInput(slot) { document.getElementById(`file-${slot}`).click(); }
+
+        async function handleFileSelect(event, slot) {
+            let file = event.target.files[0];
+            if (!file) return;
+            activeSlot = slot;
+
+            const isHeic = file.type === "image/heic" || file.type === "image/heif" || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+            if (isHeic) {
+                showToast('Convertendo arquivo HEIC...', 'loader');
+                try {
+                    const res = await heic2any({ blob: file, toType: "image/jpeg", quality: 0.9 });
+                    file = new File([Array.isArray(res) ? res[0] : res], file.name.replace(/\.[^/.]+$/, "") + ".jpg", { type: "image/jpeg" });
+                } catch (e) {
+                    showToast('Erro ao converter HEIC.', 'alert-circle');
+                    event.target.value = '';
+                    return;
+                }
+            }
+
+            if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
+                try {
+                    showToast('Lendo PDF...', 'loader');
+                    const buffer = await file.arrayBuffer();
+                    const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+                    state[slot].pdfDoc = pdf;
+                    state[slot].totalPages = pdf.numPages;
+                    state[slot].currentPage = 1;
+                    await renderPdfPage(slot, 1);
+                } catch (e) {
+                    showToast('Erro ao abrir PDF.', 'alert-circle');
+                }
+            } else if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    state[slot].rawSrc = e.target.result;
+                    state[slot].pdfDoc = null;
+                    openCropper(e.target.result);
+                };
+                reader.readAsDataURL(file);
+            } else {
+                showToast('Formato não suportado.', 'alert-circle');
+            }
+            event.target.value = '';
+        }
+
+        async function renderPdfPage(slot, pageNum) {
+            const page = await state[slot].pdfDoc.getPage(pageNum);
+            const viewport = page.getViewport({ scale: 2.0 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width; canvas.height = viewport.height;
+            await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+            
+            state[slot].rawSrc = canvas.toDataURL('image/jpeg', 0.95);
+            const selector = document.getElementById('pdf-page-selector-container');
+            if (state[slot].totalPages > 1) {
+                selector.classList.remove('hidden');
+                document.getElementById('pdf-page-num').innerText = `${pageNum} / ${state[slot].totalPages}`;
+            } else {
+                selector.classList.add('hidden');
+            }
+            openCropper(state[slot].rawSrc);
+        }
+
+        async function changePdfPage(delta) {
+            if (!activeSlot || !state[activeSlot].pdfDoc) return;
+            const newPage = state[activeSlot].currentPage + delta;
+            if (newPage >= 1 && newPage <= state[activeSlot].totalPages) {
+                state[activeSlot].currentPage = newPage;
+                await renderPdfPage(activeSlot, newPage);
+            }
+        }
+
+        function openCropper(imageSrc) {
+            const modal = document.getElementById('cropper-modal');
+            const img = document.getElementById('cropper-image');
+            img.src = imageSrc;
+            modal.classList.remove('hidden');
+
+            if (cropperInstance) cropperInstance.destroy();
+
+            const isFicha = (activeSlot === 'ficha');
+            document.getElementById('cropper-modal-title').innerText = isFicha ? 'Ajustar Ficha' : 'Ajustar Posição';
+
+            cropperInstance = new Cropper(img, {
+                aspectRatio: isFicha ? NaN : (3 / 4),
+                viewMode: 1,
+                autoCropArea: 0.95,
+                responsive: true,
+                background: false
+            });
+        }
+
+        function reopenCropper(slot) {
+            activeSlot = slot;
+            if (state[slot].rawSrc) openCropper(state[slot].rawSrc);
+        }
+
+        function rotateCropper(deg) { if (cropperInstance) cropperInstance.rotate(deg); }
+        function resetCropper() { if (cropperInstance) cropperInstance.reset(); }
+        function closeCropperModal() {
+            document.getElementById('cropper-modal').classList.add('hidden');
+            if (cropperInstance) { cropperInstance.destroy(); cropperInstance = null; }
+        }
+
+        async function applyCrop() {
+            if (!cropperInstance || !activeSlot) return;
+            showToast('Processando arquivo...', 'loader');
+
+            const canvas = cropperInstance.getCroppedCanvas();
+            let w, h;
+
+            if (activeSlot === 'rosto') {
+                w = 900; h = 1200; // Trava exata nos requisitos de largura/altura
+            } else if (activeSlot === 'documento') {
+                w = 1200; h = Math.round(w * (canvas.height / canvas.width));
+            } else {
+                w = 1400; h = Math.round(w * (canvas.height / canvas.width));
+            }
+
+            const targetCanvas = document.createElement('canvas');
+            targetCanvas.width = w; targetCanvas.height = h;
+            const ctx = targetCanvas.getContext('2d');
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(canvas, 0, 0, w, h);
+
+            let quality = 0.8;
+            let blob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', quality));
+            while (blob.size > 480 * 1024 && quality > 0.2) {
+                quality -= 0.15;
+                blob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', quality));
+            }
+
+            state[activeSlot].croppedBlob = blob;
+            
+            // Atualiza UI do Slot
+            document.getElementById(`preview-img-${activeSlot}`).src = URL.createObjectURL(blob);
+            document.getElementById(`preview-container-${activeSlot}`).classList.remove('hidden');
+            document.getElementById(`placeholder-${activeSlot}`).classList.add('hidden');
+            document.getElementById(`btn-crop-${activeSlot}`).classList.remove('hidden');
+            
+            const badge = document.getElementById(`badge-${activeSlot}`);
+            badge.className = "text-xs font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-md";
+            badge.innerText = "Concluído";
+            
+            closeCropperModal();
+            checkValidity();
+            showToast(`Pronto! (${Math.round(blob.size / 1024)} KB)`, 'check-circle');
+            lucide.createIcons();
+        }
+
+        function checkValidity() {
+            const name = document.getElementById('fullName').value.trim();
+            const hasFile = Object.values(state).some(s => s.croppedBlob !== null);
+            document.getElementById('btn-save-zip').disabled = !(name.length > 2 && hasFile);
+        }
+
+        async function generateZipPackage() {
+            const rawName = document.getElementById('fullName').value.trim();
+            const sanitized = rawName.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9\s_]/g, "").trim().replace(/\s+/g, '_');
+
+            const zip = new JSZip();
+            const folder = zip.folder(sanitized);
+            
+            if (state.rosto.croppedBlob) folder.file(`${sanitized}_Rosto.jpg`, state.rosto.croppedBlob);
+            if (state.documento.croppedBlob) folder.file(`${sanitized}_Documento.jpg`, state.documento.croppedBlob);
+            if (state.ficha.croppedBlob) folder.file(`${sanitized}_FichaInscricao.jpg`, state.ficha.croppedBlob);
+
+            showToast('Gerando pacote ZIP...', 'loader');
+            lastGeneratedZipBlob = await zip.generateAsync({ type: 'blob' });
+            lastSanitizedName = sanitized;
+
+            downloadZipFile();
+            document.getElementById('whatsapp-section').classList.remove('hidden');
+            const btn = document.getElementById('btn-save-zip');
+            btn.innerHTML = `<i data-lucide="check" class="w-5 h-5"></i> Pacote Gerado`;
+            btn.disabled = true;
+            lucide.createIcons();
+            showToast('Download concluído!', 'check-circle');
+        }
+
+        function downloadZipFile() {
+            if (!lastGeneratedZipBlob) return;
+            const url = URL.createObjectURL(lastGeneratedZipBlob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `${lastSanitizedName}_Documentos.zip`;
+            document.body.appendChild(a); a.click();
+            setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 1000);
+        }
+
+        function resetValidador() {
+            document.getElementById('fullName').value = '';
+            slotsConfig.forEach(s => {
+                state[s.id] = { rawSrc: null, croppedBlob: null, pdfDoc: null, currentPage: 1, totalPages: 1 };
+                document.getElementById(`preview-container-${s.id}`).classList.add('hidden');
+                document.getElementById(`placeholder-${s.id}`).classList.remove('hidden');
+                document.getElementById(`btn-crop-${s.id}`).classList.add('hidden');
+                const badge = document.getElementById(`badge-${s.id}`);
+                badge.className = "text-xs font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-md";
+                badge.innerText = "Pendente";
+            });
+            document.getElementById('whatsapp-section').classList.add('hidden');
+            const btn = document.getElementById('btn-save-zip');
+            btn.innerHTML = `<i data-lucide="package" class="w-5 h-5"></i> Gerar Pacote (.ZIP)`;
+            btn.disabled = true;
+            lastGeneratedZipBlob = null;
+            lastSanitizedName = '';
+            lucide.createIcons();
+            showToast('Validador reiniciado.', 'info');
+        }
+
+        async function shareViaWhatsAppFile() {
+            if (!lastGeneratedZipBlob) return;
+            const file = new File([lastGeneratedZipBlob], `${lastSanitizedName}_Documentos.zip`, { type: 'application/zip' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                try { await navigator.share({ files: [file], title: 'Documentos', text: `Documentos de ${lastSanitizedName.replace(/_/g, ' ')}` }); } catch (e) {}
+            } else {
+                window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`Segue o pacote de documentos de ${lastSanitizedName.replace(/_/g, ' ')}.`)}`, '_blank');
+            }
+        }
+
+        function openWhatsAppChat() {
+            const name = lastSanitizedName ? lastSanitizedName.replace(/_/g, ' ') : '';
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(`Olá! Aqui estão os documentos de ${name}.`)}`, '_blank');
+        }
+
+        function showToast(msg, icon = 'info') {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-msg').innerText = msg;
+            document.getElementById('toast-icon').setAttribute('data-lucide', icon);
+            lucide.createIcons();
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
+        }
+    </script>
+</body>
+</html>
