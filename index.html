@@ -37,6 +37,9 @@
 
     <!-- JSZip -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <!-- heic2any (Conversão automática de fotos do iOS) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.0.4/heic2any.min.js"></script>
     
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -62,7 +65,7 @@
                 </div>
                 <div>
                     <h1 class="text-lg font-bold text-slate-900 leading-tight">Validador de Fotos & Documentos</h1>
-                    <p class="text-xs text-slate-500">Enquadramento, redimensionamento estrito (máx 500KB) e exportação segura</p>
+                    <p class="text-xs text-slate-500">Enquadramento, suporte a HEIC/PDF, redimensionamento (máx 500KB) e ZIP</p>
                 </div>
             </div>
         </div>
@@ -116,7 +119,7 @@
                                 <div class="text-xs text-slate-600 font-medium">Clique ou arraste a foto</div>
                             </div>
                         </div>
-                        <input type="file" id="file-rosto" accept="image/*,.pdf" class="hidden" onchange="handleFileSelect(event, 'rosto')">
+                        <input type="file" id="file-rosto" accept="image/*,.heic,.heif,.pdf" class="hidden" onchange="handleFileSelect(event, 'rosto')">
                     </div>
                     <div class="mt-4 pt-4 border-t border-slate-100">
                         <button id="btn-crop-rosto" onclick="reopenCropper('rosto')" class="hidden w-full py-2 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center gap-1.5">
@@ -145,7 +148,7 @@
                                 <div class="text-xs text-slate-600 font-medium">Clique ou arraste o documento</div>
                             </div>
                         </div>
-                        <input type="file" id="file-documento" accept="image/*,.pdf" class="hidden" onchange="handleFileSelect(event, 'documento')">
+                        <input type="file" id="file-documento" accept="image/*,.heic,.heif,.pdf" class="hidden" onchange="handleFileSelect(event, 'documento')">
                     </div>
                     <div class="mt-4 pt-4 border-t border-slate-100">
                         <button id="btn-crop-documento" onclick="reopenCropper('documento')" class="hidden w-full py-2 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center gap-1.5">
@@ -174,7 +177,7 @@
                                 <div class="text-xs text-slate-600 font-medium">Clique ou arraste a ficha</div>
                             </div>
                         </div>
-                        <input type="file" id="file-ficha" accept="image/*,.pdf" class="hidden" onchange="handleFileSelect(event, 'ficha')">
+                        <input type="file" id="file-ficha" accept="image/*,.heic,.heif,.pdf" class="hidden" onchange="handleFileSelect(event, 'ficha')">
                     </div>
                     <div class="mt-4 pt-4 border-t border-slate-100">
                         <button id="btn-crop-ficha" onclick="reopenCropper('ficha')" class="hidden w-full py-2 px-3 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-lg flex items-center justify-center gap-1.5">
@@ -191,7 +194,7 @@
             <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
                 <div class="space-y-1 text-center sm:text-left">
                     <h3 class="font-bold text-slate-900">Gerenciar Pacote</h3>
-                    <p class="text-xs text-slate-500">Processa os arquivos na memória sem deixar rastros no PC.</p>
+                    <p class="text-xs text-slate-500">Processa os arquivos na memória sem deixar rastros no PC ou celular.</p>
                 </div>
                 <div class="flex items-center gap-2 w-full sm:w-auto">
                     <button id="btn-save-zip" onclick="generateZipPackage()" disabled 
@@ -214,7 +217,7 @@
                     </div>
                     <div>
                         <h4 class="font-bold text-slate-900 text-sm">Pacote Pronto</h4>
-                        <p class="text-xs text-slate-500">Baixe para o celular ou envie pelo WhatsApp.</p>
+                        <p class="text-xs text-slate-500">Baixe para o dispositivo ou envie pelo WhatsApp.</p>
                     </div>
                 </div>
                 <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
@@ -298,9 +301,28 @@
         }
 
         async function handleFileSelect(event, slot) {
-            const file = event.target.files[0];
+            let file = event.target.files[0];
             if (!file) return;
             activeSlot = slot;
+
+            // Verifica se é HEIC/HEIF da Apple e converte automaticamente para JPEG
+            const isHeic = file.type === "image/heic" || file.type === "image/heif" || file.name.toLowerCase().endsWith('.heic') || file.name.toLowerCase().endsWith('.heif');
+            if (isHeic) {
+                showToast('Convertendo arquivo HEIC da Apple...', 'loader');
+                try {
+                    const convertedBlob = await heic2any({
+                        blob: file,
+                        toType: "image/jpeg",
+                        quality: 0.9
+                    });
+                    const finalBlob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+                    file = new File([finalBlob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", { type: "image/jpeg" });
+                } catch (err) {
+                    showToast('Erro ao converter arquivo HEIC.', 'alert-circle');
+                    event.target.value = '';
+                    return;
+                }
+            }
 
             if (file.type === 'application/pdf' || file.name.endsWith('.pdf')) {
                 try {
@@ -397,7 +419,6 @@
 
             const canvas = cropperInstance.getCroppedCanvas();
             
-            // Define largura alvo segura mantendo proporção
             const targetWidth = 1400;
             const targetHeight = Math.round(targetWidth * (canvas.height / canvas.width));
 
@@ -410,7 +431,6 @@
             ctx.imageSmoothingQuality = 'high';
             ctx.drawImage(canvas, 0, 0, targetWidth, targetHeight);
 
-            // Compressão progressiva para garantir obrigatoriamente < 500KB
             let quality = 0.75;
             let bestBlob = await new Promise(r => targetCanvas.toBlob(r, 'image/jpeg', quality));
 
